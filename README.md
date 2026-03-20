@@ -1,1 +1,1 @@
-# CollegeApp-NKUST
+# NKUST plus
