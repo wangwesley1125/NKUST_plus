@@ -270,6 +270,17 @@ struct MainView: View {
             }
             .navigationTitle("首頁")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink {
+                        SettingView(isLoggedIn: $isLoggedIn, cookies: cookies)
+                    } label: {
+                        Image(systemName: "person.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.teal)
+                    }
+                }
+            }
         }
         // 每分鐘更新一次狀態（進度條 + 課程狀態）
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { date in

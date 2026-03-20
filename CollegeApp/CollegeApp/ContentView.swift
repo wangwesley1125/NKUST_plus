@@ -43,11 +43,19 @@ struct ContentView: View {
                 }
             
             // 設定
-            SettingView(isLoggedIn: $isLoggedIn, cookies: cookies)
+//            SettingView(isLoggedIn: $isLoggedIn, cookies: cookies)
+//                .tabItem {
+//                    Image(systemName: "person.fill")
+//                    Text("個人")
+//                }
+            
+            // 關於
+            AboutView()
                 .tabItem {
-                    Image(systemName: "person.fill")
-                    Text("個人")
+                    Image(systemName: "info.square")
+                    Text("關於")
                 }
+            
         }
         .tint(Color(Color.teal))
     }
