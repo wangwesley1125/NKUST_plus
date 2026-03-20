@@ -2,7 +2,7 @@
 //  SettingView.swift
 //  CollegeApp
 //
-//  Created by 王耀偉 on 2026/3/14.
+//  Created by Wesley Wang on 2026/3/14.
 //
 
 import SwiftUI
@@ -91,6 +91,7 @@ struct SettingView: View {
                 Section {
                     Button(role: .destructive) {
                         CookieStorage.clear()
+                        CredentialManager.delete()
                         isLoggedIn = false
                     } label: {
                         HStack {

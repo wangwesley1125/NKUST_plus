@@ -2,7 +2,7 @@
 //  CopyRightView.swift
 //  CollegeApp
 //
-//  Created by 王耀偉 on 2026/3/20.
+//  Created by Wesley Wang on 2026/3/20.
 //
 
 import SwiftUI

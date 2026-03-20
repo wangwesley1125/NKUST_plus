@@ -49,16 +49,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9609F1812F6111D8000602C5 /* CollegeAppTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CollegeAppTests;
-			sourceTree = "<group>";
-		};
-		9609F18B2F6111D9000602C5 /* CollegeAppUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CollegeAppUITests;
-			sourceTree = "<group>";
-		};
 		9609F1E02F651C66000602C5 /* CollegeApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CollegeApp;
@@ -96,8 +86,6 @@
 			isa = PBXGroup;
 			children = (
 				9609F1E02F651C66000602C5 /* CollegeApp */,
-				9609F1812F6111D8000602C5 /* CollegeAppTests */,
-				9609F18B2F6111D9000602C5 /* CollegeAppUITests */,
 				9609F24A2F6AD3C3000602C5 /* Frameworks */,
 				9609F1722F6111D3000602C5 /* Products */,
 			);
@@ -162,9 +150,6 @@
 			dependencies = (
 				9609F1802F6111D8000602C5 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				9609F1812F6111D8000602C5 /* CollegeAppTests */,
-			);
 			name = CollegeAppTests;
 			packageProductDependencies = (
 			);
@@ -184,9 +169,6 @@
 			);
 			dependencies = (
 				9609F18A2F6111D9000602C5 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				9609F18B2F6111D9000602C5 /* CollegeAppUITests */,
 			);
 			name = CollegeAppUITests;
 			packageProductDependencies = (

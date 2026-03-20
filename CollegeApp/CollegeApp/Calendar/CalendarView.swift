@@ -2,7 +2,7 @@
 //  CalendarView.swift
 //  CollegeApp
 //
-//  Created by 王耀偉 on 2026/3/18.
+//  Created by Wesley Wang on 2026/3/18.
 //
 
 import SwiftUI
