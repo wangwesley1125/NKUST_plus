@@ -355,11 +355,14 @@ struct LoginView: View {
     @State private var cookies: [HTTPCookie] = []
     @State private var isLoggedIn = false
     @State private var showConsent = false
+    
+    // 決定顯示上方的"請登入高科學生教務資訊系統"
+    @State private var isTransitioning = false
 
     var body: some View {
         Group {
             if showConsent {
-                // 尚未同意過 → 顯示告知聲明
+                // 尚未同意過 -> 顯示告知聲明
                 PrivacyConsentView {
                     // 同意：記錄並進入登入畫面
                     ConsentStorage.hasAgreed = true
@@ -372,24 +375,26 @@ struct LoginView: View {
                 ContentView(cookies: cookies, isLoggedIn: $isLoggedIn)
             } else {
                 ZStack(alignment: .top) {
-                    NKUSTWebView(cookies: $cookies, isLoggedIn: $isLoggedIn)
+                    NKUSTWebView(cookies: $cookies, isLoggedIn: $isLoggedIn, isTransitioning: $isTransitioning)
                         .ignoresSafeArea()
-
-                    Text("請登入高科學生系統")
-                        .padding(8)
-                        .frame(maxWidth: .infinity)
-                        .background(.thinMaterial)
+                    
+                    if !isTransitioning {
+                        Text("請登入高科學生教務資訊系統")
+                            .padding(8)
+                            .frame(maxWidth: .infinity)
+                            .background(.thinMaterial)
+                    }
                 }
             }
         }
         .onAppear {
             if !ConsentStorage.hasAgreed {
-                // 從未同意過 → 先顯示告知聲明
+                // 從未同意過 -> 先顯示告知聲明
                 showConsent = true
                 return
             }
 
-            // 已同意過 → 檢查有沒有儲存的 Cookie
+            // 已同意過 -> 檢查有沒有儲存的 Cookie
             let saved = CookieStorage.load()
             if !saved.isEmpty {
                 cookies = saved
@@ -406,6 +411,7 @@ struct LoginView: View {
 struct NKUSTWebView: UIViewRepresentable {
     @Binding var cookies: [HTTPCookie]
     @Binding var isLoggedIn: Bool
+    @Binding var isTransitioning: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -425,10 +431,27 @@ struct NKUSTWebView: UIViewRepresentable {
     // MARK: - Coordinator（偵測登入成功）
     class Coordinator: NSObject, WKNavigationDelegate {
         var parent: NKUSTWebView
+        
+        var overlayView: UIView?
 
         init(_ parent: NKUSTWebView) {
             self.parent = parent
         }
+        
+        func webView(_ webView: WKWebView,
+                             decidePolicyFor navigationAction: WKNavigationAction,
+                             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+
+            if let url = navigationAction.request.url?.absoluteString,
+                   url.contains("/student") && !url.contains("Login") {
+                    // 立刻蓋上不透明遮罩，使用者完全看不到跳轉
+                    DispatchQueue.main.async {
+                        self.parent.isTransitioning = true
+                        self.showOverlay(on: webView)
+                    }
+                }
+                decisionHandler(.allow)
+            }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard let urlString = webView.url?.absoluteString else { return }
@@ -441,14 +464,39 @@ struct NKUSTWebView: UIViewRepresentable {
                     DispatchQueue.main.async {
                         self.parent.cookies = cookies
                         self.parent.isLoggedIn = true
-
-                        print("=== 取得 Cookie ===")
-                        cookies.forEach { print("\($0.name) = \($0.value.prefix(20))...") }
-
                         CookieStorage.save(cookies)
                     }
                 }
             }
+        }
+        
+        // 螢幕遮罩顏色
+        private func showOverlay(on webView: WKWebView) {
+            let overlay = UIView(frame: webView.bounds)
+            overlay.backgroundColor = UIColor.systemBackground
+            overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            
+            // App Icon 圖片
+            let imageView = UIImageView(image: UIImage(named: "AppIconRemove"))
+            
+            // 讓圖片完整，怕被拉長
+            imageView.contentMode = .scaleAspectFit
+            
+            // NSLayoutConstraint 置中，不能拿掉
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            
+            overlay.addSubview(imageView)
+            
+            // 圖片大小和對齊畫面中央
+            NSLayoutConstraint.activate([
+                imageView.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+                imageView.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
+                imageView.widthAnchor.constraint(equalToConstant: 200),
+                imageView.heightAnchor.constraint(equalToConstant: 200)
+            ])
+            
+            webView.addSubview(overlay)
+            overlayView = overlay
         }
     }
 }

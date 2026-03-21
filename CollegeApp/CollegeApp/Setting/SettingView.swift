@@ -91,7 +91,6 @@ struct SettingView: View {
                 Section {
                     Button(role: .destructive) {
                         CookieStorage.clear()
-                        CredentialManager.delete()
                         isLoggedIn = false
                     } label: {
                         HStack {
