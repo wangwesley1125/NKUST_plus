@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Doc/NKUST plus_light.svg" width="140" />
+  <img src="Doc/NKUST_plus_light.svg" width="140" />
 </p>
 
 <h1 align="center">NKUST Plus</h1>
