@@ -123,6 +123,7 @@ struct BuildingDetailSheet: View {
                             .stroke(Color.gray.opacity(0.3))
                     )
                 }
+                .layoutPriority(1)
             }
             
             Spacer()
@@ -132,17 +133,9 @@ struct BuildingDetailSheet: View {
         .presentationDetents(
             building.classrooms.isEmpty
             ? [.height(110)]
-            : [.height(250)]
+            : [.height(400)]
         )
+        // 讓內層 ScrollView 優先處理滾動，不被 sheet 手勢攔截
+        .presentationContentInteraction(.scrolls)
     }
-}
-
-struct CampusModels: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
-    }
-}
-
-#Preview {
-    CampusModels()
 }
