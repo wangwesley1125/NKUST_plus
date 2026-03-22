@@ -27,21 +27,20 @@ struct PrivacyView: View {
         .init(
             number: "二", title: "蒐集之個人資料類別", icon: "person.badge.shield.checkmark.fill", color: .blue,
             paragraphs: [
-                "本 App 不會蒐集、儲存或記錄使用者之學校帳號及密碼。",
-                "使用者透過 App 內建 WebView 登入學校系統時，相關驗證資訊係由學校系統處理。本 App 僅透過系統提供之 HTTPCookieStorage 機制，暫時儲存登入狀態（Cookie），以維持使用期間之登入狀態。"
+                "使用者透過 App 內建 WebView 登入學校系統時，相關驗證資訊係由學校系統處理。本 App 僅透過系統提供之 HTTPCookieStorage 機制，暫時儲存登入狀態（Cookie），以維持使用期間之登入狀態。",
+                "若使用者選擇開啟「AutoFill 自動填入」功能，帳號密碼將以加密方式儲存於裝置本地 Keychain，不會傳輸至任何伺服器或第三方。"
             ],
             bullets: []
         ),
         .init(
             number: "三", title: "個人資料利用方式", icon: "lock.doc.fill", color: .indigo,
-            paragraphs: ["Cookie 僅用於："],
-            bullets: ["維持登入狀態", "提供課表與校務資訊查詢功能"]
+            paragraphs: ["本 App 不會讀取、分析或另行利用帳號相關敏感資訊，亦不會傳送至第三方。Cookie 及帳密（如啟用 AutoFill）僅用於："],
+            bullets: ["維持登入狀態", "提供課表與校務資訊查詢功能","AutoFill 自動填入登入表單（需使用者明確同意）"]
         ),
         .init(
             number: "四", title: "資料保存與安全", icon: "externaldrive.badge.checkmark", color: .orange,
             paragraphs: [
-                "Cookie 屬暫時性資料，將依系統機制於期限內自動失效或刪除。",
-                "使用者亦可透過登出或清除 App 資料方式移除登入狀態。"
+                "登入狀態（Cookie）暫時儲存於裝置本地，不會傳輸至任何伺服器或第三方。Cookie 將依學校系統設定於期限內自動失效，屆時 App 將自動登出，使用者須重新登入。使用者亦可透過登出或清除 App 資料方式主動移除登入狀態。AutoFill 帳密儲存於裝置 Keychain，使用者可隨時在 App 內刪除。"
             ],
             bullets: []
         ),
