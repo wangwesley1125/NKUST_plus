@@ -253,7 +253,7 @@ struct MainView: View {
                                 if upcomingCourses.isEmpty {
                                     EmptyStateCard(
                                         icon: "checkmark.seal.fill",
-                                        message: "沒有課程了喔～"
+                                        message: "沒有課程了喔～🎉"
                                     )
                                 } else {
                                     VStack(spacing: 10) {
