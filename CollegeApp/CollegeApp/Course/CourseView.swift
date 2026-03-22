@@ -97,7 +97,7 @@ struct CourseView: View {
             courses = try CourseParser.parse(html: html)
             // 預設跳到今天
             let weekday = Calendar.current.component(.weekday, from: Date())
-            selectedDay = max(0, min(6, weekday - 2)) // 1=日,2=一...
+            selectedDay = weekday == 1 ? 6 : weekday - 2 // 1=日,2=一...
         } catch {
             errorMessage = error.localizedDescription
         }

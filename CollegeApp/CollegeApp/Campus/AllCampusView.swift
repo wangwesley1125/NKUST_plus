@@ -17,7 +17,7 @@ enum Campus: String, CaseIterable {
     case nanzi    = "楠梓"
 }
 
-// 各校區中心座標
+// 各校區訂一個座標（校門口）
 extension Campus {
     var center: CLLocationCoordinate2D {
         switch self {
@@ -27,87 +27,6 @@ extension Campus {
         case .qijin:    return CLLocationCoordinate2D(latitude: 22.608805, longitude: 120.271993)
         case .nanzi:    return CLLocationCoordinate2D(latitude: 22.724602, longitude: 120.314650)
         }
-    }
-}
-
-// 教室表格
-struct BuildingDetailSheet: View {
-    let building: Building
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 標題
-            HStack {
-                Image(systemName: building.icon)
-                    .foregroundStyle(building.color)
-                    .font(.title2)
-                Text(building.name)
-                    .font(.title2.bold())
-            }
-            
-            if !building.description.isEmpty {
-                Text(building.description)
-                    .foregroundStyle(.secondary)
-            }
-            
-            // 有教室資料才顯示表格
-            if !building.classrooms.isEmpty {
-                Divider()
-                Text("教室列表")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // 表頭
-                        HStack(spacing: 0) {
-                            Text("樓層")
-                                .frame(width: 50)
-                                .padding(.vertical, 6)
-                            Divider().frame(height: 30)
-                            Text("教室編號")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
-                        }
-                        .font(.caption.bold())
-                        .background(building.color.opacity(0.15))
-                        
-                        Divider()
-                        
-                        // 每一行
-                        ForEach(building.classrooms, id: \.floor) { row in
-                            HStack(alignment: .center, spacing: 0) {
-                                Text(row.floor)
-                                    .frame(width: 50)
-                                    .padding(.vertical, 6)
-                                Divider()
-                                // 教室們自動換行
-                                FlowLayout(row.rooms)
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 6)
-                            }
-                            .font(.caption)
-                            
-                            Divider()
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3))
-                    )
-                }
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .presentationDetents(
-            building.classrooms.isEmpty
-            ? [.height(110)]
-            : [.height(250)]
-        )
     }
 }
 
@@ -124,7 +43,14 @@ struct AllCampusView: View {
     @State private var locationManager = CLLocationManager()
 
     // 之後可把各校區 buildings 合併進來，加上 campus 欄位
-    let buildings = JiangongBuildings.all as [Building]
+    var buildings: [Building] {
+        switch selectedCampus {
+        case .jiangong: return JiangongBuildings.all
+        case .diyi:     return DiyiBuildings.all
+        default:        return []   // 其他校區之後再補
+        }
+    }
+    
 
     var body: some View {
         NavigationStack {

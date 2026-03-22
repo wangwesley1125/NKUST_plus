@@ -189,7 +189,7 @@ struct MainView: View {
     // 今天是週幾（0=週一 … 6=週日）
     private var todayIndex: Int {
         let weekday = Calendar.current.component(.weekday, from: now)
-        return max(0, min(6, weekday - 2))
+        return weekday == 1 ? 6 : weekday - 2
     }
 
     // 今天的課（依節次排序）

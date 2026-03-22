@@ -8,29 +8,6 @@
 import SwiftUI
 import MapKit
 
-// 建築資料結構
-struct Building: Identifiable {
-    let id = UUID()
-    let name: String
-    let coordinate: CLLocationCoordinate2D
-    let description: String
-    let icon: String
-    let color: Color
-    let classrooms: [(floor: String, rooms: [String])]
-    
-    // 讓沒有教室資料的建築不用每次都填
-    init(name: String, coordinate: CLLocationCoordinate2D,
-             description: String, icon: String, color: Color,
-             classrooms: [(floor: String, rooms: [String])] = []) {
-        self.name = name
-        self.coordinate = coordinate
-        self.description = description
-        self.icon = icon
-        self.color = color
-        self.classrooms = classrooms
-    }
-}
-
 enum JiangongBuildings {
     static let all: [Building] = [
         Building(name: "正門",
@@ -280,22 +257,12 @@ struct JiangongMapView: View {
     
     @State private var position = MapCameraPosition.region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 22.651611327466625, longitude: 120.32885345739281),
+            center: CLLocationCoordinate2D(latitude: 22.651611, longitude: 120.328853),
             span: MKCoordinateSpan(latitudeDelta: 0.003, longitudeDelta: 0.003)
         )
     )
     
     @State private var selectedBuilding: Building?
-    
-    // 邊界範圍
-    // 左上：22.651475, 120.327463
-    // 右上：22.651787, 120.329255
-    // 左下：22.646656, 120.327553
-    // 右下：22.646687, 120.329445
-//    let minLat = 22.646656
-//    let maxLat = 22.651787
-//    let minLng = 120.327463
-//    let maxLng = 120.329445
     
     // 校園建築
     let buildings = JiangongBuildings.all
@@ -407,29 +374,6 @@ struct JiangongMapView: View {
                 ? [.height(110)]
                 : [.height(250)]
             )
-        }
-    }
-}
-
-// 教室表格
-struct FlowLayout: View {
-    let items: [String]
-    
-    init(_ items: [String]) {
-        self.items = items
-    }
-    
-    var body: some View {
-        
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 0)], alignment: .leading, spacing: 4) {
-            ForEach(items, id: \.self) { item in
-                Text(item)
-                    .font(.caption2)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            }
         }
     }
 }
