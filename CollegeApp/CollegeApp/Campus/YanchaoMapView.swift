@@ -107,7 +107,7 @@ enum YanchaoBuildings {
                  description: "",
                  icon: "bird.fill",
                   color: Color.green),
-        Building(name: "財政稅務系",
+        Building(name: "管理學院大樓(二館)",
                   coordinate: CLLocationCoordinate2D(latitude: 22.773374229410397, longitude: 120.40204028313187),
                   description: "",
                   icon: "building",
@@ -120,7 +120,7 @@ enum YanchaoBuildings {
                     (floor: "5F", rooms: ["MB503","MB504","MB522","MB523","MB524","MB525A","MB525B"]),
                     (floor: "6F", rooms: ["MB602","MB603"])
                   ]),
-        Building(name: "觀光管理系",
+        Building(name: "管理學院大樓(一館)",
                   coordinate: CLLocationCoordinate2D(latitude: 22.773523453519473, longitude: 120.40306334808744),
                   description: "",
                   icon: "building",
