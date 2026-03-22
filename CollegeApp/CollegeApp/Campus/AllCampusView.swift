@@ -49,7 +49,7 @@ struct AllCampusView: View {
         case .diyi:     return DiyiBuildings.all
         case .yanchao: return YanchaoBuildings.all
         case .qijin: return QijinBuildings.all
-        default:        return []   // 其他校區之後再補
+        case .nanzi: return NanziBuildings.all
         }
     }
     

@@ -442,6 +442,7 @@ struct LoginView: View {
                 PrivacyConsentView {
                     ConsentStorage.hasAgreed = true
                     showConsent = false
+                    savedCredentials = CredentialStorage.load()
                 } onDisagree: {
                     UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
                 }
@@ -465,7 +466,10 @@ struct LoginView: View {
                             let isChanged  = existing?.username != username || existing?.password != password
                             if isNew || isChanged {
                                 pendingCredentials = (username, password)
-                                showSavePasswordSheet = true
+                                //showSavePasswordSheet = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                    showSavePasswordSheet = true
+                                }
                             }
                         }
                     )
