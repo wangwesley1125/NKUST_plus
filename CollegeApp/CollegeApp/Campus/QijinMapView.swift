@@ -51,12 +51,12 @@ enum QijinBuildings {
                  icon: "building",
                   color: Color.gray,
                  classrooms: [
-                     (floor: "1F", rooms: ["1101船舶機械工廠","1104輪機實驗室","1105船電實習教室","1110主輔機工廠","旗U101教室","旗U102教室","旗U103教室","旗U104教室"]),
-                     (floor: "2F", rooms: ["1204海資多功能教室","1205海事風電研討室","旗U201教室","旗U202教室","旗U203教室","旗U204教室"]),
-                     (floor: "3F", rooms: ["旗306海資電腦教室","旗307簡報室","旗U301教室","旗U302教室","旗U303教室","旗U304教室","旗U305階梯教室","旗U308輪機系會議室","旗U313海事機電研究","旗U314學士後培力專"]),
-                     (floor: "4F", rooms: ["1405自動控制實驗室","1406電子實習實驗室","1409航海氣象教室","1410通用模擬教室","1411電子航儀教室","1412海圖教室","1413雷達模擬教室","旗402航技專題","旗U403教室","旗U404教室","旗U405教室","旗U406教室","旗U407教室","旗U408階梯教室"]),
-                     (floor: "5F", rooms: ["旗U509教室","旗U510教室","旗U511教室","旗U512教室"]),
-                     (floor: "6F", rooms: ["1608航海模擬資料室","1612貨油實驗室","1616雷達模擬教室","英語園區自學教室(1609)","旗U603教室","旗U604教室","旗U605教室","旗津1610電腦B教室","旗津1611語言教室"])
+                     (floor: "1F", rooms: ["1101船舶機械工廠","1104輪機實驗室","1105船電實習教室","1110主輔機工廠","旗U101","旗U102","旗U103","旗U104"]),
+                     (floor: "2F", rooms: ["1204海資多功能教室","1205海事風電研討室","旗U201","旗U202","旗U203","旗U204"]),
+                     (floor: "3F", rooms: ["旗306海資電腦教室","旗307簡報室","旗U301","旗U302","旗U303","旗U304","旗U305階梯教室","旗U308輪機系會議室","旗U313海事機電研究","旗U314學士後培力專"]),
+                     (floor: "4F", rooms: ["1405自動控制實驗室","1406電子實習實驗室","1409航海氣象教室","1410通用模擬教室","1411電子航儀教室","1412海圖","1413雷達模擬教室","旗402航技專題","旗U403","旗U404","旗U405","旗U406","旗U407","旗U408階梯教室"]),
+                     (floor: "5F", rooms: ["旗U509","旗U510","旗U511","旗U512"]),
+                     (floor: "6F", rooms: ["1608航海模擬資料室","1612貨油實驗室","1616雷達模擬教室","英語園區自學教室(1609)","旗U603","旗U604","旗U605","旗津1610電腦B","旗津1611語言教室"])
                  ]),
         Building(name: "海事工程實習大樓",
                  coordinate: CLLocationCoordinate2D(latitude: 22.608394, longitude: 120.273705),
@@ -170,81 +170,9 @@ struct QijinMapView: View {
 
         // 點擊建築顯示資訊
         .sheet(item: $selectedBuilding) { building in
-            VStack(alignment: .leading, spacing: 12) {
-                // 標題
-                HStack {
-                    Image(systemName: building.icon)
-                        .foregroundStyle(building.color)
-                        .font(.title2)
-                    Text(building.name)
-                        .font(.title2.bold())
-                }
-                
-                if !building.description.isEmpty {
-                    Text(building.description)
-                        .foregroundStyle(.secondary)
-                }
-                
-                // 有教室資料才顯示表格
-                if !building.classrooms.isEmpty {
-                    Divider()
-                    Text("教室列表")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            // 表頭
-                            HStack(spacing: 0) {
-                                Text("樓層")
-                                    .frame(width: 50)
-                                    .padding(.vertical, 6)
-                                Divider().frame(height: 30)
-                                Text("教室編號")
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 6)
-                            }
-                            .font(.caption.bold())
-                            .background(building.color.opacity(0.15))
-                            
-                            Divider()
-                            
-                            // 每一行
-                            ForEach(building.classrooms, id: \.floor) { row in
-                                HStack(alignment: .center, spacing: 0) {
-                                    Text(row.floor)
-                                        .frame(width: 50)
-                                        .padding(.vertical, 6)
-                                    Divider()
-                                    // 教室們自動換行
-                                    FlowLayout(row.rooms)
-                                        .padding(.vertical, 4)
-                                        .padding(.horizontal, 6)
-                                }
-                                .font(.caption)
-                                
-                                Divider()
-                            }
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.3))
-                        )
-                    }
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // 有教室資料就給大一點的 sheet
-            .presentationDetents(
-                building.classrooms.isEmpty
-                ? [.height(110)]
-                : [.height(250)]
-            )
+            BuildingDetailSheet(building: building)
         }
+        .presentationContentInteraction(.scrolls)
     }
 }
 

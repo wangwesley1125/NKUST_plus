@@ -20,7 +20,6 @@ struct Building: Identifiable {
     let color: Color
     let classrooms: [(floor: String, rooms: [String])]
     
-    // 讓沒有教室資料的建築不用每次都填
     init(name: String, coordinate: CLLocationCoordinate2D,
              description: String, icon: String, color: Color,
              classrooms: [(floor: String, rooms: [String])] = []) {
@@ -33,7 +32,7 @@ struct Building: Identifiable {
     }
 }
 
-// 教室表格
+// 教室標籤
 struct FlowLayout: View {
     let items: [String]
     
@@ -41,9 +40,10 @@ struct FlowLayout: View {
         self.items = items
     }
     
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 4)
+    
     var body: some View {
-        
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 0)], alignment: .leading, spacing: 4) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 4) {
             ForEach(items, id: \.self) { item in
                 Text(item)
                     .font(.caption2)
@@ -51,6 +51,7 @@ struct FlowLayout: View {
                     .padding(.vertical, 3)
                     .background(Color(.systemGray6))
                     .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .multilineTextAlignment(.center)
             }
         }
     }
@@ -59,6 +60,8 @@ struct FlowLayout: View {
 // 建築跳出的內容
 struct BuildingDetailSheet: View {
     let building: Building
+    
+    @State private var selectedFloor: String = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -76,54 +79,46 @@ struct BuildingDetailSheet: View {
                     .foregroundStyle(.secondary)
             }
             
-            // 有教室資料才顯示表格
             if !building.classrooms.isEmpty {
                 Divider()
-                Text("教室列表")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
                 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // 表頭
-                        HStack(spacing: 0) {
-                            Text("樓層")
-                                .frame(width: 50)
-                                .padding(.vertical, 6)
-                            Divider().frame(height: 30)
-                            Text("教室編號")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
-                        }
-                        .font(.caption.bold())
-                        .background(building.color.opacity(0.15))
-                        
-                        Divider()
-                        
-                        // 每一行
+                // 樓層選擇列
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
                         ForEach(building.classrooms, id: \.floor) { row in
-                            HStack(alignment: .center, spacing: 0) {
+                            let isSelected = selectedFloor == row.floor
+                            Button {
+                                selectedFloor = row.floor
+                            } label: {
                                 Text(row.floor)
-                                    .frame(width: 50)
-                                    .padding(.vertical, 6)
-                                Divider()
-                                // 教室們自動換行
-                                FlowLayout(row.rooms)
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 6)
+                                    .font(.subheadline.bold())
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 7)
+                                    .background(isSelected ? building.color : Color(.systemGray5))
+                                    .foregroundStyle(isSelected ? .white : .primary)
+                                    .clipShape(Capsule())
                             }
-                            .font(.caption)
-                            
-                            Divider()
+                            .buttonStyle(.plain)
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3))
-                    )
+                    .padding(.horizontal, 1)
                 }
-                .layoutPriority(1)
+                
+                // 選定樓層的教室
+                if let current = building.classrooms.first(where: { $0.floor == selectedFloor }) {
+                    Text("教室列表")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    ScrollView {
+                        FlowLayout(current.rooms)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemGray6).opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .layoutPriority(1)
+                }
             }
             
             Spacer()
@@ -135,7 +130,11 @@ struct BuildingDetailSheet: View {
             ? [.height(110)]
             : [.height(400)]
         )
-        // 讓內層 ScrollView 優先處理滾動，不被 sheet 手勢攔截
         .presentationContentInteraction(.scrolls)
+        .onAppear {
+            if let first = building.classrooms.first {
+                selectedFloor = first.floor
+            }
+        }
     }
 }
