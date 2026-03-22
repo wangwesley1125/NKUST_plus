@@ -47,11 +47,12 @@ struct AllCampusView: View {
         switch selectedCampus {
         case .jiangong: return JiangongBuildings.all
         case .diyi:     return DiyiBuildings.all
+        case .yanchao: return YanchaoBuildings.all
+        case .qijin: return QijinBuildings.all
         default:        return []   // 其他校區之後再補
         }
     }
     
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {

@@ -8,8 +8,6 @@
 import SwiftUI
 import MapKit
 
-//
-
 enum DiyiBuildings {
     static let all: [Building] = [
         Building(name: "西區校門口",
