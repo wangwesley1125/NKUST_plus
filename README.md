@@ -2,7 +2,7 @@
   <img src="Doc/NKUST_plus_light.svg" width="140" />
 </p>
 
-<h1 align="center">NKUST Plus</h1>
+<h1 align="center">高科 NKUST Plus</h1>
 
 一款以 **SwiftUI** 打造的 iOS App，專為高科大學生設計，整合校務系統與校園資訊，提供更直覺、快速且安全的使用體驗，並在使用前以清楚的隱私告知與同意流程保障使用者權益。
 
