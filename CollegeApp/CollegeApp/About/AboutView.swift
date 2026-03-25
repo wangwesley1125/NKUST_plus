@@ -29,7 +29,7 @@ struct AboutView: View {
                         HStack {
                             Text("版本資訊")
                             Spacer()
-                            Text("1.0")
+                            Text("1.1.0")
                         }
                     }
                     .foregroundColor(.teal)

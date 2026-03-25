@@ -67,11 +67,12 @@ struct SettingView: View {
                 Section("學籍資料") {
                     profileRow(icon: "building.columns.fill", label: "科系", value: profile.department)
                     profileRow(icon: "person.3.fill", label: "班級", value: profile.className)
-                    NavigationLink {
-                        SchoolSertifacate(cookies: cookies)
-                    } label: {
-                        profileRow(icon: "checkmark.seal.fill", label: "在學狀態", value: profile.status)
-                    }
+                    profileRow(icon: "checkmark.seal.fill", label: "在學狀態", value: profile.status)
+//                    NavigationLink {
+//                        SchoolSertifacate(cookies: cookies)
+//                    } label: {
+//                        profileRow(icon: "checkmark.seal.fill", label: "在學狀態", value: profile.status)
+//                    }
                 }
                 
                 // 行事曆
