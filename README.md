@@ -83,7 +83,7 @@
 
 ## 系統需求
 - iOS 26 以上
-- iPhone 裝置
+- iPhone, iPad 裝置
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
