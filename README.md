@@ -4,6 +4,12 @@
 
 <h1 align="center">高科 Plus</h1>
 
+<p align="center">
+  <a href="https://apps.apple.com/tw/app/%E9%AB%98%E7%A7%91-plus/id6760967835">
+    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" width="160">
+  </a>
+</p>
+
 一款以 **SwiftUI** 打造的 iOS App，專為高科大學生設計，整合校務系統與校園資訊，提供更直覺、快速且安全的使用體驗，並在使用前以清楚的隱私告知與同意流程保障使用者權益。
 
 ## 核心特色
