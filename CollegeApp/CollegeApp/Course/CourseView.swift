@@ -143,59 +143,145 @@ struct DayCourseView: View {
     }
 }
 
-// MARK: - 課程卡片
-struct CourseCard: View {
-    let course: Course
+// MARK: - 備註管理
+class NoteStore {
+    static let shared = NoteStore()
     
-    var body: some View {
-        HStack(spacing: 0) {
-            // 左側時間條
-            VStack(spacing: 2) {
-                Text(course.period)
-                    .font(.caption)
-                    .bold()
-                if let time = CourseParser.periodTimes[course.period] {
-                    Text(time.0)
-                        .font(.system(size: 10))
-                    Text("|")
-                        .font(.system(size: 8))
-                        .foregroundColor(.secondary)
-                    Text(time.1)
-                        .font(.system(size: 10))
-                }
-            }
-            .frame(width: 55)
-            .padding(.vertical, 12)
-            .background(Color.teal.opacity(0.15))
-            
-            // 右側課程資訊
-            VStack(alignment: .leading, spacing: 4) {
-                Text(course.name)
-                    .font(.subheadline)
-                    .bold()
-                    .foregroundColor(.primary)
-                
-                HStack(spacing: 8) {
-                    Label(course.teacher, systemImage: "person.fill")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Label(course.room, systemImage: "mappin.circle.fill")
-                        .font(.caption)
-                        .foregroundColor(.teal)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            
-            Spacer()
-        }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.07), radius: 5, x: 0, y: 2)
+    func save(note: String, for courseKey: String) {
+        UserDefaults.standard.set(note, forKey: "note_\(courseKey)")
+    }
+    
+    func load(for courseKey: String) -> String {
+        UserDefaults.standard.string(forKey: "note_\(courseKey)") ?? ""
     }
 }
 
+// MARK: - 課程卡片
+struct CourseCard: View {
+    let course: Course
+    @State private var note: String = ""
+    @State private var showNoteSheet = false
+    
+    var courseKey: String { "\(course.name)_\(course.period)" }
+    
+    var body: some View {
+        Button {
+            showNoteSheet = true
+        } label: {
+            HStack(spacing: 0) {
+                // 左側時間條（不變）
+                VStack(spacing: 2) {
+                    Text(course.period)
+                        .font(.caption)
+                        .bold()
+                    if let time = CourseParser.periodTimes[course.period] {
+                        Text(time.0).font(.system(size: 10))
+                        Text("|").font(.system(size: 8)).foregroundColor(.secondary)
+                        Text(time.1).font(.system(size: 10))
+                    }
+                }
+                .frame(width: 55)
+                .padding(.vertical, 12)
+                .background(Color.teal.opacity(0.15))
+                
+                // 右側課程資訊
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(course.name)
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(.primary)
+                    
+                    HStack(spacing: 8) {
+                        Label(course.teacher, systemImage: "person.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Label(course.room, systemImage: "mappin.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.teal)
+                    }
+                    
+                    // 備注預覽
+                    if !note.isEmpty {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                            .padding(.top, 2)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                
+                Spacer()
+                
+                Image(systemName: note.isEmpty ? "note.text.badge.plus" : "note.text")
+                    .font(.caption)
+                    .foregroundColor(note.isEmpty ? .secondary.opacity(0.4) : .teal)
+                    .padding(.trailing, 12)
+            }
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.07), radius: 5, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .onAppear {
+            note = NoteStore.shared.load(for: courseKey)
+        }
+        .sheet(isPresented: $showNoteSheet) {
+            NoteSheet(courseName: course.name, note: $note) {
+                NoteStore.shared.save(note: note, for: courseKey)
+            }
+        }
+    }
+}
+
+// MARK: - 備注欄
+struct NoteSheet: View {
+    let courseName: String
+    @Binding var note: String
+    let onSave: () -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(courseName)
+                    .font(.headline)
+                    .padding(.horizontal)
+                
+                TextEditor(text: $note)
+                    .scrollContentBackground(.hidden)  // 隱藏預設背景
+                    .padding(8)
+                    .frame(maxHeight: 200)
+                    .background(Color(.systemGray4))
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .padding(.horizontal)
+                
+                Spacer()
+            }
+            .padding(.top)
+            .navigationTitle("備注")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("儲存") {
+                        onSave()
+                        dismiss()
+                    }
+                    .bold()
+                    .tint(.teal)
+                }
+            }
+        }
+        .presentationDetents([.height(300)])
+    }
+}
+
+// MARK: - 空堂卡片
 struct EmptyPeriodCard: View {
     let period: String
     
