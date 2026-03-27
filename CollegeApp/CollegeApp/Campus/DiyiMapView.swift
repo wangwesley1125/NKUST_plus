@@ -107,7 +107,11 @@ enum DiyiBuildings {
                  coordinate: CLLocationCoordinate2D(latitude: 22.753889538387615, longitude: 120.33559288200689),
                  description: "",
                  icon: "building",
-                  color: Color.gray),
+                  color: Color.gray,
+                 classrooms: [
+                     (floor: "1F", rooms: ["Y105"]),
+                     (floor: "3F", rooms: ["Y311"])
+                 ]),
         Building(name: "學生活動中心",
                  coordinate: CLLocationCoordinate2D(latitude: 22.754659396240474, longitude: 120.33540802136463),
                  description: "7-ELEVEN 高科大門市 & 圖書文具部",
@@ -134,11 +138,11 @@ enum DiyiBuildings {
                   color: Color.gray,
                  classrooms: [
                      (floor: "B1F", rooms: ["E001","E002","E003","E004","E005","E006","E007","E008","E009","E010","E011","E012","E013","E014","E015","E016"]),
-                     (floor: "1F", rooms: ["E101","E102","E103","E104","E105","E106","E107","E108","E109","E110","E113","E115","E116","E117","E118","E119","E120"]),
-                     (floor: "2F", rooms: ["E201","E202","E203","E204","E205","E206","E207","E209","E210","E211","E212","E213","E214","E216","E217","E220"]),
-                     (floor: "3F", rooms: ["E301","E302","E303","E304","E305","E306","E307","E308","E309","E310","E311","E312","E313","E314","E315","E317","E318","E319"]),
+                     (floor: "1F", rooms: ["E101","E102","E103","E104","E105","E106","E107","E109","E110","E113","E115","E116","E117","E118","E119","E120"]),
+                     (floor: "2F", rooms: ["E201","E202","E203","E204","E205","E206","E207","E209","E210","E211","E212","E213","E214","E217","E220"]),
+                     (floor: "3F", rooms: ["E301","E302","E303","E304","E305","E306","E307","E309","E310","E311","E312","E313","E314","E315","E317","E318","E319"]),
                      (floor: "4F", rooms: ["E403","E416","E419","E420","E421","E422","E423","E424","E425"]),
-                     (floor: "5F", rooms: ["E514","E522","E525","E534"])
+                     (floor: "5F", rooms: ["E514","E525","E534"])
                  ]),
         Building(name: "外語學院",
                  coordinate: CLLocationCoordinate2D(latitude: 22.756639615540866, longitude: 120.33615568367877),
@@ -148,9 +152,9 @@ enum DiyiBuildings {
                  classrooms: [
                      (floor: "B1F", rooms: ["D009"]),
                      (floor: "1F", rooms: ["D101","D102多功能教室","D103多功能教室","D104","D105","D106","D107","D108","D109","D110電腦教室","D111"]),
-                     (floor: "2F", rooms: ["D201","D202電腦教室","D203","D204文化教室","D205電腦教室","D206電腦教室","D208電腦教室","D209電腦教室"]),
+                     (floor: "2F", rooms: ["D201","D202電腦教室","D203","D204文化教室","D205電腦教室","D206A","D206B","D208電腦教室","D209電腦教室"]),
                      (floor: "3F", rooms: ["D301文化教室","D302","D308"]),
-                     (floor: "4F", rooms: ["D414","D415","D416","D417","D418"]),
+                     (floor: "4F", rooms: ["D414","D415","D416","D417","D418","D419電腦教室"]),
                      (floor: "5F", rooms: ["D516","D517"])
                  ]),
         Building(name: "管理學院",
@@ -160,8 +164,8 @@ enum DiyiBuildings {
                   color: Color.gray,
                  classrooms: [
                      (floor: "1F", rooms: ["C103","C104","C116","C117","C120","C123實驗教室","C124冷鏈實驗室","C125"]),
-                     (floor: "2F", rooms: ["C203","C204","C218","C219","C220","C222"]),
-                     (floor: "3F", rooms: ["C333","C338","C340","C345","C356","C359","C363"]),
+                     (floor: "2F", rooms: ["C203","C204","C218","C219","C220","C222","C228-4"]),
+                     (floor: "3F", rooms: ["C333","C338","C340","C345","C351會議室","C356","C359","C363"]),
                      (floor: "4F", rooms: ["C433","C434","C442","C443","C444","C445","C446","C448"])
                  ]),
         Building(name: "電資學院",
@@ -170,9 +174,9 @@ enum DiyiBuildings {
                  icon: "building",
                   color: Color.gray,
                  classrooms: [
-                     (floor: "1F", rooms: ["B113","B115","B116","B118","B119","B120","B121","B122","B123","B124","B125"]),
+                     (floor: "1F", rooms: ["B113","B115","B116","B117","B118","B119","B120","B121","B122","B123","B124","B125"]),
                      (floor: "2F", rooms: ["B201","B201-8","B211電腦教室","B222","B225","B229"]),
-                     (floor: "3F", rooms: ["B323","B337 ","B339","B342","B344","B345"]),
+                     (floor: "3F", rooms: ["B323","B337 ","B338物理實驗室","B339","B342","B344","B345"]),
                      (floor: "4F", rooms: ["B442","B443 ","B444","B445"]),
                      (floor: "5F", rooms: ["B501","B504 ","B506","B508"])
                  ]),
@@ -215,7 +219,7 @@ enum DiyiBuildings {
                   icon: "building",
                    color: Color.gray,
                   classrooms: [
-                      (floor: "1F", rooms: ["V101","V106"])
+                      (floor: "1F", rooms: ["V101","V106","V107"])
                   ]),
         Building(name: "職務宿舍",
                  coordinate: CLLocationCoordinate2D(latitude: 22.758546559558063, longitude: 120.34080222175933),

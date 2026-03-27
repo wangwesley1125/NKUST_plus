@@ -36,7 +36,8 @@ enum JiangongBuildings {
                  icon: "building",
                   color: Color.blue,
                  classrooms: [
-                     (floor: "5F", rooms: ["行501", "行502", "行503", "行504", "行505 AI", "行506", "行507", "行508", "行509", "行510", "行511"])
+                    (floor: "4F", rooms: ["行401", "行402", "行403", "行404", "行405多功能研習", "行406", "行407", "行408", "行409", "行410"]),
+                     (floor: "5F", rooms: ["行501", "行502", "行503", "行504", "行505AI", "行506", "行507", "行508", "行509", "行510", "行511"])
                  ]),
         Building(name: "育賢樓",
                  coordinate: CLLocationCoordinate2D(latitude: 22.650496705338718, longitude: 120.32777429929709),
@@ -72,8 +73,7 @@ enum JiangongBuildings {
                      (floor: "6F", rooms: ["資606"]),
                      (floor: "7F", rooms: ["資701","資704"]),
                      (floor: "8F", rooms: ["資805","資809","系辦"]),
-                     (floor: "10F", rooms: ["光電所第一研討室"]),
-                     (floor: "11F", rooms: ["資1109"]),
+                     (floor: "10F", rooms: ["光電所第一研討室","光電所第二研討室"]),
                      (floor: "12F", rooms: ["資1207"]),
                  ]),
         Building(name: "咖啡廣場",
@@ -112,7 +112,8 @@ enum JiangongBuildings {
                   color: Color.blue,
                  classrooms: [
                      (floor: "B1F", rooms: ["西001", "西002", "西003", "西004", "西005"]),
-                     (floor: "1F", rooms: ["西101", "西102", "西103", "西004"])
+                     (floor: "1F", rooms: ["西101", "西102", "西103", "西104"]),
+                     (floor: "3F", rooms: ["西302C"])
                  ]),
         Building(name: "東棟",
                  coordinate: CLLocationCoordinate2D(latitude: 22.650566872946502, longitude: 120.32920356354421),
@@ -163,10 +164,10 @@ enum JiangongBuildings {
                      (floor: "1F", rooms: ["土101","土107"]),
                      (floor: "2F", rooms: ["土207"]),
                      (floor: "3F", rooms: ["土302A", "土308", "土309"]),
-                     (floor: "4F", rooms: ["土408", "土409"]),
-                     (floor: "5F", rooms: ["土503A ","土503B","土508","土509"]),
+                     (floor: "4F", rooms: ["土401A","土408", "土409"]),
+                     (floor: "5F", rooms: ["土502F","土503","土508","土509"]),
                      (floor: "6F", rooms: ["土608","土609"]),
-                     (floor: "7F", rooms: ["土702", "土704", "土708", "土709"]),
+                     (floor: "7F", rooms: ["土702", "土703", "土708", "土709"]),
                  ]),
         Building(name: "機械工程館",
                  coordinate: CLLocationCoordinate2D(latitude: 22.648282093812334, longitude: 120.3291390157567),
@@ -191,10 +192,11 @@ enum JiangongBuildings {
                  icon: "building",
                   color: Color.gray,
                  classrooms: [
-                     (floor: "B1F", rooms: ["化001(B1)"]),
+                     (floor: "B1F", rooms: ["化材B1-07(化001)"]),
                      (floor: "1F", rooms: ["曉東講堂"]),
                      (floor: "3F", rooms: ["化305"]),
-                     (floor: "4F", rooms: ["化402"])
+                     (floor: "4F", rooms: ["化402"]),
+                     (floor: "8F", rooms: ["化809","化812"])
                  ]),
         Building(name: "多功能實習工廠",
                  coordinate: CLLocationCoordinate2D(latitude: 22.649233, longitude: 120.327644),

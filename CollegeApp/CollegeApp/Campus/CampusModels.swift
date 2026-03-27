@@ -36,8 +36,11 @@ struct Building: Identifiable {
 struct FlowLayout: View {
     let items: [String]
     
-    init(_ items: [String]) {
+    var highlightedRoom: String = ""
+    
+    init(_ items: [String], highlightedRoom: String = "") {
         self.items = items
+        self.highlightedRoom = highlightedRoom
     }
     
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 4)
@@ -49,7 +52,8 @@ struct FlowLayout: View {
                     .font(.caption2)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(Color(.systemGray6))
+                    .background(item == highlightedRoom ? Color.yellow : Color(.systemGray6))
+                    .foregroundStyle(item == highlightedRoom ? Color.black : Color.primary)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .multilineTextAlignment(.center)
             }
@@ -61,7 +65,11 @@ struct FlowLayout: View {
 struct BuildingDetailSheet: View {
     let building: Building
     
+    // 選擇的樓層
     @State private var selectedFloor: String = ""
+    
+    // 點亮使用者搜尋的那間教室
+    var highlightedRoom: String = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -111,7 +119,7 @@ struct BuildingDetailSheet: View {
                         .foregroundStyle(.secondary)
                     
                     ScrollView {
-                        FlowLayout(current.rooms)
+                        FlowLayout(current.rooms, highlightedRoom: highlightedRoom)
                             .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(.systemGray6).opacity(0.5))
@@ -122,6 +130,26 @@ struct BuildingDetailSheet: View {
             }
             
             Spacer()
+            
+            // 開啟 Google Map 按鈕
+            Button {
+                let lat = building.coordinate.latitude
+                let lng = building.coordinate.longitude
+                let name = building.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                
+                // 優先開啟 Google Maps app，沒安裝則用瀏覽器
+                if let url = URL(string: "comgooglemaps://?q=\(name)&center=\(lat),\(lng)&zoom=18"),
+                   UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url)
+                } else if let url = URL(string: "https://www.google.com/maps/search/?api=1&query=\(lat),\(lng)") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label("在 Google Maps 開啟", systemImage: "map.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -132,7 +160,10 @@ struct BuildingDetailSheet: View {
         )
         .presentationContentInteraction(.scrolls)
         .onAppear {
-            if let first = building.classrooms.first {
+            if !highlightedRoom.isEmpty,
+               let matchedFloor = building.classrooms.first(where: { $0.rooms.contains(highlightedRoom) }) {
+                selectedFloor = matchedFloor.floor  // 跳到高亮教室所在的樓層
+            } else if let first = building.classrooms.first {
                 selectedFloor = first.floor
             }
         }
