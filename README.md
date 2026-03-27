@@ -85,5 +85,15 @@
 - iOS 26 以上
 - iPhone, iPad 裝置
 
+## 版本紀錄
+
+### v1.2.0 (2026/03/27)
+- 課表可以做備注
+- 校園地圖更新至 115 年新版
+- 新增查詢教室功能
+- 地圖可以外部連結到 Google Map，讓使用者可以進行導航
+- 新增分享 App 連結
+- 新增常用和校內處室等連結
+
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
