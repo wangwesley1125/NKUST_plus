@@ -147,7 +147,7 @@ private struct WeatherCard: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color(.systemGray6).opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.07), radius: 6, x: 0, y: 2)
         .task { await fetchWeather() }

@@ -15,6 +15,7 @@ struct CourseView: View {
     @State private var errorMessage: String?
     @State private var selectedDay = 0
     @State private var showEmptyPeriods = false
+    @AppStorage("showGrid") private var showGrid = false
     
     let weekdays = ["週一","週二","週三","週四","週五","週六","週日"]
     
@@ -26,49 +27,53 @@ struct CourseView: View {
                 } else if let error = errorMessage {
                     Text("錯誤：\(error)").foregroundColor(.red)
                 } else {
-                    VStack(spacing: 0) {
-                        // 上方星期選擇列
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(0..<7, id: \.self) { index in
-                                    Button {
-                                        withAnimation { selectedDay = index }
-                                    } label: {
-                                        Text(weekdays[index])
-                                            .font(.subheadline)
-                                            .bold()
-                                            .padding(.horizontal, 14)
-                                            .padding(.vertical, 8)
-                                            .background(
-                                                selectedDay == index
-                                                ? Color.teal
-                                                : Color(.systemGray5)
-                                            )
-                                            .foregroundColor(
-                                                selectedDay == index ? .white : .primary
-                                            )
-                                            .clipShape(Capsule())
+                    if showGrid {
+                        WeekGridView(courses: courses)
+                    } else {
+                        VStack(spacing: 0) {
+                            // 上方星期選擇列
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(0..<7, id: \.self) { index in
+                                        Button {
+                                            withAnimation { selectedDay = index }
+                                        } label: {
+                                            Text(weekdays[index])
+                                                .font(.subheadline)
+                                                .bold()
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 8)
+                                                .background(
+                                                    selectedDay == index
+                                                    ? Color.teal
+                                                    : Color(.systemGray5)
+                                                )
+                                                .foregroundColor(
+                                                    selectedDay == index ? .white : .primary
+                                                )
+                                                .clipShape(Capsule())
+                                        }
                                     }
                                 }
+                                .padding(.horizontal)
+                                .padding(.vertical, 10)
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 10)
-                        }
-                        
-                        Divider()
-                        
-                        // 左右滑動的課表
-                        TabView(selection: $selectedDay) {
-                            ForEach(0..<7, id: \.self) { dayIndex in
-                                DayCourseView(
-                                    dayName: weekdays[dayIndex],
-                                    courses: courses.filter { $0.weekday == dayIndex },
-                                    showEmptyPeriods: showEmptyPeriods
-                                )
-                                .tag(dayIndex)
+                            
+                            Divider()
+                            
+                            // 左右滑動的課表
+                            TabView(selection: $selectedDay) {
+                                ForEach(0..<7, id: \.self) { dayIndex in
+                                    DayCourseView(
+                                        dayName: weekdays[dayIndex],
+                                        courses: courses.filter { $0.weekday == dayIndex },
+                                        showEmptyPeriods: showEmptyPeriods
+                                    )
+                                    .tag(dayIndex)
+                                }
                             }
+                            .tabViewStyle(.page(indexDisplayMode: .never))
                         }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
                     }
                 }
             }
@@ -84,6 +89,16 @@ struct CourseView: View {
                             systemImage: showEmptyPeriods ? "eye.slash.fill" : "eye.fill"
                         )
                         .font(.caption)
+                    }
+                    .disabled(showGrid)
+                }
+                
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        withAnimation { showGrid.toggle() }
+                    } label: {
+                        Image(systemName: showGrid ? "list.bullet" : "square.grid.3x3.fill")
+                            .font(.caption)
                     }
                 }
             }
@@ -219,7 +234,7 @@ struct CourseCard: View {
                     .foregroundColor(note.isEmpty ? .secondary.opacity(0.4) : .teal)
                     .padding(.trailing, 12)
             }
-            .background(Color(.systemBackground))
+            .background(Color(.systemGray6).opacity(0.6))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.07), radius: 5, x: 0, y: 2)
         }

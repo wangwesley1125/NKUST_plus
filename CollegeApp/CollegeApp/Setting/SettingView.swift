@@ -15,6 +15,9 @@ struct SettingView: View {
     @State private var profile = StudentProfile()
     @State private var isLoading = true
     
+    @State private var showLibraryCard = false
+    
+    // 個人頭像
     func loadPhoto(from urlString: String) async {
         guard let url = URL(string: urlString) else { return }
         var request = URLRequest(url: url)
@@ -58,6 +61,17 @@ struct SettingView: View {
                             Text(profile.studentId)
                                 .font(.caption)
                                 .foregroundColor(.teal)
+                        }
+                        
+                        Spacer()
+                        
+                        // QR Code & BarCode
+                        Button() {
+                            showLibraryCard = true
+                        } label: {
+                            Image(systemName: "qrcode")
+                                .resizable()
+                                .frame(width: 50, height: 50)
                         }
                     }
                     .padding(.vertical, 8)
@@ -106,6 +120,12 @@ struct SettingView: View {
             .redacted(reason: isLoading ? .placeholder : [])
         }
         .task { await loadProfile() }
+        .sheet(isPresented: $showLibraryCard) {
+            LibraryCardView(
+                studentId: profile.studentId,
+                name: profile.name
+            )
+        }
     }
     
     func profileRow(icon: String, label: String, value: String) -> some View {
