@@ -12,6 +12,8 @@ import SwiftSoup
 struct CalendarView: View {
     @State private var semester1Doc: PDFDocument?
     @State private var semester2Doc: PDFDocument?
+    @State private var nextYear1Doc: PDFDocument?
+    @State private var nextYear2Doc: PDFDocument?
     @State private var selectedSemester = 1
     @State private var currentYear = 0
     @State private var isLoading = true
@@ -45,6 +47,12 @@ struct CalendarView: View {
                         if semester2Doc != nil {
                             Text("\(currentYear)-2").tag(2)
                         }
+                        if nextYear1Doc != nil {
+                            Text("\(currentYear + 1)-1").tag(3)
+                        }
+                        if nextYear2Doc != nil {
+                            Text("\(currentYear + 1)-2").tag(4)
+                        }
                     }
                     .pickerStyle(.segmented)
                     .padding()
@@ -54,6 +62,12 @@ struct CalendarView: View {
                         PDFKitView(document: doc)
                             .ignoresSafeArea(edges: .bottom)
                     } else if selectedSemester == 2, let doc = semester2Doc {
+                        PDFKitView(document: doc)
+                            .ignoresSafeArea(edges: .bottom)
+                    } else if selectedSemester == 3, let doc = nextYear1Doc {
+                        PDFKitView(document: doc)
+                            .ignoresSafeArea(edges: .bottom)
+                    } else if selectedSemester == 4, let doc = nextYear2Doc {
                         PDFKitView(document: doc)
                             .ignoresSafeArea(edges: .bottom)
                     } else {
@@ -72,7 +86,7 @@ struct CalendarView: View {
         errorMessage = nil
 
         do {
-            // Step 1：從網站抓 currentYear / currentSemester
+            // 從網站抓 currentYear / currentSemester
             let pageURL = URL(string: "https://acad.nkust.edu.tw/p/412-1004-1588.php?Lang=zh-tw")!
             var request = URLRequest(url: pageURL)
             request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", forHTTPHeaderField: "User-Agent")
@@ -88,12 +102,21 @@ struct CalendarView: View {
             currentYear = year
             selectedSemester = semester  // 預設顯示當前學期
 
-            // Step 2：同時下載兩個學期
+            // 同時下載四個學期
             async let doc1 = fetchPDF(year: year, semester: 1)
             async let doc2 = fetchPDF(year: year, semester: 2)
+            
+            // 嘗試抓下一學年
+            async let doc3 = fetchPDF(year: year + 1, semester: 1)
+            async let doc4 = fetchPDF(year: year + 1, semester: 2)
 
-            semester1Doc = await doc1
-            semester2Doc = await doc2
+            // semester1Doc = await doc1
+            // semester2Doc = await doc2
+            let (d1, d2, d3, d4) = await (doc1, doc2, doc3, doc4)
+            semester1Doc = d1
+            semester2Doc = d2
+            nextYear1Doc = d3
+            nextYear2Doc = d4
 
         } catch {
             errorMessage = "無法取得行事曆，請稍後再試"
