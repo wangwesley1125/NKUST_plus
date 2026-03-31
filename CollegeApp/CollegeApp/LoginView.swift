@@ -452,10 +452,13 @@ struct LoginView: View {
                 }
 
             } else if isLoggedIn {
+                
                 ContentView(cookies: cookies, isLoggedIn: $isLoggedIn)
-
+                
             } else if isGuest {
-                GuestContentView()
+                
+                GuestContentView(isGuest: $isGuest)
+                
             } else {
                 ZStack(alignment: .top) {
                     NKUSTWebView(
@@ -490,9 +493,10 @@ struct LoginView: View {
                             HStack {
                                 Spacer()
                                 Button {
+                                    UserDefaults.standard.set(true, forKey: "isGuest")
                                     isGuest = true
                                 } label: {
-                                    Text("訪客")
+                                    Text("\(Image(systemName: "person.fill")) 訪客")
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 14)
@@ -563,6 +567,11 @@ struct LoginView: View {
                 isLoggedIn = true
             } else {
                 CookieStorage.clear()
+            }
+            
+            if UserDefaults.standard.bool(forKey: "isGuest") {
+                isGuest = true
+                return
             }
         }
     }

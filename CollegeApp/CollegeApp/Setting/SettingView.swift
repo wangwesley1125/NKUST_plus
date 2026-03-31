@@ -92,6 +92,7 @@ struct SettingView: View {
                 // 行事曆
                 Section {
                     NavigationLink {
+                        // CalendarView(isGuest: .constant(true))
                         CalendarView()
                     } label: {
                         HStack {

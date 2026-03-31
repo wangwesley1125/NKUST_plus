@@ -8,9 +8,12 @@
 import SwiftUI
 
 struct GuestContentView: View {
+    
+    var isGuest: Binding<Bool>? = nil
+    
     var body: some View {
         TabView {
-            CalendarView()
+            CalendarView(isGuest: isGuest)
                 .tabItem {
                     Label("行事曆", systemImage: "calendar")
                 }
@@ -25,9 +28,10 @@ struct GuestContentView: View {
                     Label("關於", systemImage: "info.circle")
                 }
         }
+        .tint(Color(Color.teal))
     }
 }
 
 #Preview {
-    GuestContentView()
+    GuestContentView(isGuest: .constant(true))
 }

@@ -18,6 +18,7 @@ struct CalendarView: View {
     @State private var currentYear = 0
     @State private var isLoading = true
     @State private var errorMessage: String?
+    var isGuest: Binding<Bool>? = nil // 如果使用者是訪客會出現登入按鈕，有登入過就不會出現
 
     var body: some View {
         NavigationStack {
@@ -80,6 +81,20 @@ struct CalendarView: View {
             .navigationTitle("行事曆")
             .navigationBarTitleDisplayMode(.inline)
             .task { await loadCalendar() }
+            .toolbar {
+                if let isGuest = isGuest {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("登入") {
+                            UserDefaults.standard.set(false, forKey: "isGuest")
+                            isGuest.wrappedValue = false
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .background(Color.blue)
+                        .clipShape(Capsule())
+                    }
+                }
+            }
         }
     }
 
