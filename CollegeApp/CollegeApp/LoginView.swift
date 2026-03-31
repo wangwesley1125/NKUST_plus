@@ -496,7 +496,7 @@ struct LoginView: View {
                                     UserDefaults.standard.set(true, forKey: "isGuest")
                                     isGuest = true
                                 } label: {
-                                    Text("\(Image(systemName: "person.fill")) 訪客")
+                                    Text("\(Image(systemName: "person.fill"))訪客")
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 14)
@@ -572,6 +572,11 @@ struct LoginView: View {
             if UserDefaults.standard.bool(forKey: "isGuest") {
                 isGuest = true
                 return
+            }
+        }
+        .onChange(of: isLoggedIn) { _, newValue in
+            if !newValue {
+                isTransitioning = false
             }
         }
     }

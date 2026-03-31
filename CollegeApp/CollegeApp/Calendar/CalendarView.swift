@@ -84,7 +84,7 @@ struct CalendarView: View {
             .toolbar {
                 if let isGuest = isGuest {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("登入") {
+                        Button("\(Image(systemName: "person.fill"))登入") {
                             UserDefaults.standard.set(false, forKey: "isGuest")
                             isGuest.wrappedValue = false
                         }
