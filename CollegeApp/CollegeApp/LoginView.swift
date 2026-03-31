@@ -483,7 +483,7 @@ struct LoginView: View {
 
                     if !isTransitioning {
                         ZStack {
-                            Text("請登入高科學生教務資訊系統")
+                            Text("歡迎使用高科 Plus")
                                 .font(.subheadline)
                                 .frame(maxWidth: .infinity)
                             
