@@ -20,65 +20,67 @@ struct CalendarView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Group {
-            if isLoading {
-                ProgressView("載入行事曆中...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = errorMessage {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.largeTitle)
-                        .foregroundColor(.orange)
-                    Text(error)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    Button("重試") { Task { await loadCalendar() } }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.teal)
-                }
-                .padding()
-            } else {
-                VStack(spacing: 0) {
-                    // 學期切換 Picker
-                    Picker("學期", selection: $selectedSemester) {
-                        if semester1Doc != nil {
-                            Text("\(currentYear)-1").tag(1)
-                        }
-                        if semester2Doc != nil {
-                            Text("\(currentYear)-2").tag(2)
-                        }
-                        if nextYear1Doc != nil {
-                            Text("\(currentYear + 1)-1").tag(3)
-                        }
-                        if nextYear2Doc != nil {
-                            Text("\(currentYear + 1)-2").tag(4)
-                        }
+        NavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView("載入行事曆中...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = errorMessage {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundColor(.orange)
+                        Text(error)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("重試") { Task { await loadCalendar() } }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.teal)
                     }
-                    .pickerStyle(.segmented)
                     .padding()
-
-                    // 對應 PDF
-                    if selectedSemester == 1, let doc = semester1Doc {
-                        PDFKitView(document: doc)
-                            .ignoresSafeArea(edges: .bottom)
-                    } else if selectedSemester == 2, let doc = semester2Doc {
-                        PDFKitView(document: doc)
-                            .ignoresSafeArea(edges: .bottom)
-                    } else if selectedSemester == 3, let doc = nextYear1Doc {
-                        PDFKitView(document: doc)
-                            .ignoresSafeArea(edges: .bottom)
-                    } else if selectedSemester == 4, let doc = nextYear2Doc {
-                        PDFKitView(document: doc)
-                            .ignoresSafeArea(edges: .bottom)
-                    } else {
-                        ProgressView("載入中...").frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(spacing: 0) {
+                        // 學期切換 Picker
+                        Picker("學期", selection: $selectedSemester) {
+                            if semester1Doc != nil {
+                                Text("\(currentYear)-1").tag(1)
+                            }
+                            if semester2Doc != nil {
+                                Text("\(currentYear)-2").tag(2)
+                            }
+                            if nextYear1Doc != nil {
+                                Text("\(currentYear + 1)-1").tag(3)
+                            }
+                            if nextYear2Doc != nil {
+                                Text("\(currentYear + 1)-2").tag(4)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding()
+                        
+                        // 對應 PDF
+                        if selectedSemester == 1, let doc = semester1Doc {
+                            PDFKitView(document: doc)
+                                .ignoresSafeArea(edges: .bottom)
+                        } else if selectedSemester == 2, let doc = semester2Doc {
+                            PDFKitView(document: doc)
+                                .ignoresSafeArea(edges: .bottom)
+                        } else if selectedSemester == 3, let doc = nextYear1Doc {
+                            PDFKitView(document: doc)
+                                .ignoresSafeArea(edges: .bottom)
+                        } else if selectedSemester == 4, let doc = nextYear2Doc {
+                            PDFKitView(document: doc)
+                                .ignoresSafeArea(edges: .bottom)
+                        } else {
+                            ProgressView("載入中...").frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     }
                 }
             }
+            .navigationTitle("行事曆")
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await loadCalendar() }
         }
-        .navigationTitle("行事曆")
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await loadCalendar() }
     }
 
     func loadCalendar() async {

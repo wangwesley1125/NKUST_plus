@@ -426,17 +426,21 @@ struct LoginView: View {
     @State private var isTransitioning = false
 
     // AutoFill 相關狀態
-    /// Keychain 讀出的帳密，傳給 WebView 用於注入
+    // Keychain 讀出的帳密，傳給 WebView 用於注入
     @State private var savedCredentials: (username: String, password: String)? = nil
-    /// 登入頁載入完成後，WebView 設為 true → 顯示 Banner
+    // 登入頁載入完成後，WebView 設為 true → 顯示 Banner
     @State private var showAutoFillBanner = false
-    /// 使用者點「填入」後設為 true → WebView 執行 JS 注入
+    // 使用者點「填入」後設為 true → WebView 執行 JS 注入
     @State private var shouldAutoFill = false
-    /// 登入成功後偵測到的帳密，用於詢問是否儲存
+    // 登入成功後偵測到的帳密，用於詢問是否儲存
     @State private var pendingCredentials: (username: String, password: String)? = nil
     @State private var showSavePasswordSheet = false
+    
+    // 訪客登入
+    @State private var isGuest = false
 
     var body: some View {
+        
         Group {
             if showConsent {
                 PrivacyConsentView {
@@ -450,6 +454,8 @@ struct LoginView: View {
             } else if isLoggedIn {
                 ContentView(cookies: cookies, isLoggedIn: $isLoggedIn)
 
+            } else if isGuest {
+                GuestContentView()
             } else {
                 ZStack(alignment: .top) {
                     NKUSTWebView(
@@ -476,10 +482,30 @@ struct LoginView: View {
                     .ignoresSafeArea()
 
                     if !isTransitioning {
-                        Text("請登入高科學生教務資訊系統")
-                            .padding(8)
-                            .frame(maxWidth: .infinity)
-                            .background(.thinMaterial)
+                        ZStack {
+                            Text("請登入高科學生教務資訊系統")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            
+                            HStack {
+                                Spacer()
+                                Button {
+                                    isGuest = true
+                                } label: {
+                                    Text("訪客")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 7)
+                                        .background(Color.blue)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background(.thinMaterial)
                     }
                 }
                 // AutoFill Banner（底部）
