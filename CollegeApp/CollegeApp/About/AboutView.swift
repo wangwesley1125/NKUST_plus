@@ -68,6 +68,7 @@ struct AboutView: View {
                     Section {
                         Link(destination: URL(string: "mailto:nkustplus@gmail.com?subject=問題回報")!) {
                                 HStack {
+                                    Image(systemName: "envelope.fill")
                                     Text("問題回報")
                                 }
                                 .foregroundColor(.teal)
@@ -89,10 +90,21 @@ struct AboutView: View {
                             }
                         } label: {
                             HStack {
+                                Image(systemName: "paperplane.fill")
                                 Text("分享此 App")
                             }
                             .foregroundColor(.teal)
                         }
+                    }
+                    
+                    Section {
+                        Link(destination: URL(string: "https://www.threads.com/@nkust_plus?invite=0")!) {
+                                HStack {
+                                    Image(systemName: "at.circle.fill")
+                                    Text("Threads")
+                                }
+                                .foregroundColor(.teal)
+                            }
                     }
                 }
                 
