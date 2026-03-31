@@ -102,13 +102,13 @@ struct LibraryCardView: View {
 
     // MARK: - Barcode 產生
     // 和 QR Code 的概念一樣
+    // 學校的 Bar Code 是 Code39，我使用的是 Code128
     func generateBarcode(from string: String) -> UIImage? {
         let filter = CIFilter.code128BarcodeGenerator()
         filter.message = Data(string.utf8)
         filter.quietSpace = 10
         guard let output = filter.outputImage else { return nil }
         let scaled = output.transformed(by: CGAffineTransform(scaleX: 3, y: 3))
-        
         let context = CIContext()
         guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
         return UIImage(cgImage: cgImage)
