@@ -133,3 +133,9 @@ struct CollegeAppWidget: Widget {
 } timeline: {
     CourseEntry(date: .now, courses: [])
 }
+
+#Preview(as: .systemMedium) {
+    CollegeAppWidget()
+} timeline: {
+    CourseEntry(date: .now, courses: [])
+}
