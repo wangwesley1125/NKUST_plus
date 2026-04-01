@@ -99,7 +99,7 @@
 - 新增圖書館 QR Code 和 Bar Code
 - 課表顯示一到五的課程
 - 行事曆一次顯示四個學期
-- 新增訪客進入
+- 新增訪客進入，校外人士也能瀏覽高科校園
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
