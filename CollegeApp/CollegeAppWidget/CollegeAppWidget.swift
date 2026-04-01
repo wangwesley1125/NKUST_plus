@@ -65,12 +65,12 @@ struct CollegeAppWidgetEntryView: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    Text("今天沒有課 🎉")
+                    Text("今天沒有課程了喔～🎉")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
                 }
-                Spacer()
+                // Spacer()
             } else {
                 // small 最多顯示 4 堂，medium 顯示全部
                 let limit = family == .systemSmall ? 4 : todayCourses.count
