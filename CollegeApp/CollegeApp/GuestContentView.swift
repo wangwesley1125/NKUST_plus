@@ -2,7 +2,7 @@
 //  GuestContentView.swift
 //  CollegeApp
 //
-//  Created by 王耀偉 on 2026/3/31.
+//  Created by Wesley Wang on 2026/3/31.
 //
 
 import SwiftUI

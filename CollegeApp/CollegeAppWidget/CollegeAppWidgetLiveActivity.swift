@@ -2,7 +2,7 @@
 //  CollegeAppWidgetLiveActivity.swift
 //  CollegeAppWidget
 //
-//  Created by 王耀偉 on 2026/4/1.
+//  Created by Wesley Wang on 2026/4/1.
 //
 
 import ActivityKit
