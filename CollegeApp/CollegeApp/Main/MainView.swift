@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import StoreKit
 
 // MARK: - 課程狀態
 enum CourseStatus {
@@ -213,6 +214,9 @@ struct MainView: View {
     private var upcomingCourses: [Course] {
         todayCourses.filter { courseStatus(for: $0.period) == .upcoming }
     }
+    
+    // 紀錄使用者是否廣告的地方按過叉叉
+    @State private var showThreadsBanner = !UserDefaults.standard.bool(forKey: "dismissedThreadsBanner")
 
     var body: some View {
         NavigationStack {
@@ -222,7 +226,59 @@ struct MainView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
+                        
                         VStack(alignment: .leading, spacing: 24) {
+                            
+                            // MARK: Threads Banner
+                            if showThreadsBanner {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "at.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.white)
+                                        .frame(width: 36, height: 36)
+                                        .background(Color.pink)
+                                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("追蹤我們的 Threads！")
+                                            .font(.subheadline.weight(.semibold))
+                                        Text("隨時掌握新功能與最新消息 🎉")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Link(destination: URL(string: "https://www.threads.com/@nkust_plus?invite=0")!) {
+                                        Text("追蹤")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.pink)
+                                            .clipShape(Capsule())
+                                    }
+                                    
+                                    Button {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showThreadsBanner = false
+                                        }
+                                        UserDefaults.standard.set(true, forKey: "dismissedThreadsBanner")
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(12)
+                                .background(Color.pink.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .strokeBorder(Color.pink.opacity(0.2), lineWidth: 1)
+                                )
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                            }
 
                             // MARK: 天氣卡片
                             WeatherCard()
@@ -287,6 +343,19 @@ struct MainView: View {
             now = date
         }
         .task { await loadAll() }
+        .onAppear {
+            let launchCount = UserDefaults.standard.integer(forKey: "launchCount") + 1
+            UserDefaults.standard.set(launchCount, forKey: "launchCount")
+            
+            if launchCount == 2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    if let scene = UIApplication.shared.connectedScenes
+                        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+                        SKStoreReviewController.requestReview(in: scene)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - 載入資料

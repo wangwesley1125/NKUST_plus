@@ -15,54 +15,50 @@ struct WeekGridView: View {
     let rowHeight: CGFloat = 70
     
     var body: some View {
-        ScrollView([.vertical]) {
-            VStack(spacing: 0) {
-                // 表頭：節次欄 + 週一到週五
-                HStack(spacing: 0) {
-                    // 左上角空白
-                    Text("")
-                        .frame(width: 36, height: 36)
-                    
-                    ForEach(0..<5, id: \.self) { i in
-                        Text(weekdays[i])
-                            .font(.caption)
-                            .bold()
-                            .frame(width: columnWidth, height: 36)
-                            //.background(Color(.systemGray6))
-                    }
-                }
-                
-                //Divider()
-                
-                // 每一節
-                ForEach(CourseParser.periods, id: \.self) { period in
+        GeometryReader { geo in
+            let availableWidth = geo.size.width - 36  // 扣掉左側節次欄
+            let colWidth = availableWidth / 5         // 平均分給五天
+
+            ScrollView([.vertical]) {
+                VStack(spacing: 0) {
+                    // 表頭
                     HStack(spacing: 0) {
-                        // 左側節次
-                        VStack(spacing: 2) {
-                            if let time = CourseParser.periodTimes[period] {
-                                Text(time.0).font(.system(size: 10))
-                                Text(period)
-                                    .font(.caption2)
-                                    .bold()
-                                    .foregroundStyle(.tint)
-                                Text(time.1).font(.system(size: 10))
+                        Text("")
+                            .frame(width: 36, height: 36)
+                        
+                        ForEach(0..<5, id: \.self) { i in
+                            Text(weekdays[i])
+                                .font(.caption)
+                                .bold()
+                                .frame(width: colWidth, height: 36)
+                        }
+                    }
+                    
+                    // 每一節
+                    ForEach(CourseParser.periods, id: \.self) { period in
+                        HStack(spacing: 0) {
+                            VStack(spacing: 2) {
+                                if let time = CourseParser.periodTimes[period] {
+                                    Text(time.0).font(.system(size: 10))
+                                    Text(period)
+                                        .font(.caption2)
+                                        .bold()
+                                        .foregroundStyle(.tint)
+                                    Text(time.1).font(.system(size: 10))
+                                }
+                            }
+                            .frame(width: 36, height: rowHeight)
+                            
+                            ForEach(0..<5, id: \.self) { dayIndex in
+                                GridCell(
+                                    course: courses.first {
+                                        $0.weekday == dayIndex && $0.period == period
+                                    }
+                                )
+                                .frame(width: colWidth, height: rowHeight)
                             }
                         }
-                        .frame(width: 36, height: rowHeight)
-                        //.background(Color(.systemGray6))
-                        
-                        // 週一到週五的格子
-                        ForEach(0..<5, id: \.self) { dayIndex in
-                            GridCell(
-                                course: courses.first {
-                                    $0.weekday == dayIndex && $0.period == period
-                                }
-                            )
-                            .frame(width: columnWidth, height: rowHeight)
-                        }
                     }
-                    
-                    //Divider()
                 }
             }
         }
@@ -81,8 +77,11 @@ struct GridCell: View {
             ZStack {
                 // 背景
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(course != nil ? Color.teal.opacity(0.85) : Color(.systemGray3).opacity(0.3))
-                    .padding(3)
+                        .fill(
+                            course.map { courseColor(for: $0.name).opacity(0.85) }
+                            ?? Color(.systemGray3).opacity(0.3)
+                        )
+                        .padding(3)
                 
                 if let c = course {
                     VStack(spacing: 2) {
@@ -106,6 +105,19 @@ struct GridCell: View {
                 CourseDetailSheet(course: c)
             }
         }
+    }
+    
+    // 課程顯示不同顏色
+    func courseColor(for name: String) -> Color {
+        let colors: [Color] = [
+            .teal, .blue, .indigo, .purple, .pink,
+                .orange, .mint, .cyan, .green,
+                Color(red: 0.4, green: 0.6, blue: 1.0),   // 淡藍紫
+                Color(red: 1.0, green: 0.6, blue: 0.2),   // 暖橘
+                Color(red: 0.4, green: 0.8, blue: 0.6)    // 薄荷綠
+        ]
+        let hash = name.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return colors[hash % colors.count]
     }
 }
 
