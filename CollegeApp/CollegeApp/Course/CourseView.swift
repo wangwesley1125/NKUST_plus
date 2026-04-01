@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 struct CourseView: View {
     let cookies: [HTTPCookie]
@@ -109,7 +110,16 @@ struct CourseView: View {
     func loadCourses() async {
         do {
             let html = try await CourseService.shared.fetchCourses(cookies: cookies)
-            courses = try CourseParser.parse(html: html)
+            // courses = try CourseParser.parse(html: html)
+            let parsed = try CourseParser.parse(html: html)
+            let codable = parsed.map {
+                CourseCodable(name: $0.name, teacher: $0.teacher,
+                              room: $0.room, period: $0.period, weekday: $0.weekday)
+            }
+            CourseStorage.shared.save(courses: codable)
+            print("✅ 已存 \(codable.count) 堂課")
+            WidgetCenter.shared.reloadAllTimelines()
+            courses = parsed
             // 預設跳到今天
             let weekday = Calendar.current.component(.weekday, from: Date())
             selectedDay = weekday == 1 ? 6 : weekday - 2 // 1=日,2=一...

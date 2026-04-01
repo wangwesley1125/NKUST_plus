@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 import WebKit
 import Security
 
@@ -746,6 +747,23 @@ struct NKUSTWebView: UIViewRepresentable {
                         self.parent.cookies = cookies
                         self.parent.isLoggedIn = true
                         CookieStorage.save(cookies)
+                    }
+                    
+                    // 登入成功後背景更新課表 Widget
+                    Task {
+                        do {
+                            let html = try await CourseService.shared.fetchCourses(cookies: cookies)
+                            let parsed = try CourseParser.parse(html: html)
+                            let codable = parsed.map {
+                                CourseCodable(name: $0.name, teacher: $0.teacher,
+                                              room: $0.room, period: $0.period, weekday: $0.weekday)
+                            }
+                            CourseStorage.shared.save(courses: codable)
+                            WidgetCenter.shared.reloadAllTimelines()
+                            print("✅ 登入後已更新 Widget，共 \(codable.count) 堂課")
+                        } catch {
+                            print("❌ 登入後更新課表失敗：\(error)")
+                        }
                     }
                 }
             }

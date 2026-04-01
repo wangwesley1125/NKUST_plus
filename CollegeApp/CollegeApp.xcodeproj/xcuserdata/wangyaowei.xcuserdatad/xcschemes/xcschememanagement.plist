@@ -9,6 +9,11 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>CollegeAppWidgetExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>CourseWidgetExtension.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
@@ -28,6 +33,11 @@
 			<true/>
 		</dict>
 		<key>9609F1872F6111D9000602C5</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>9664396B2F7CC71F00FCCD27</key>
 		<dict>
 			<key>primary</key>
 			<true/>

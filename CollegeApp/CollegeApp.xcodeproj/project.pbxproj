@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		9609F1BC2F6269DE000602C5 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 9609F1BB2F6269DE000602C5 /* SwiftSoup */; };
+		9664396D2F7CC71F00FCCD27 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9609F24B2F6AD3C3000602C5 /* WidgetKit.framework */; };
+		9664396E2F7CC71F00FCCD27 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9609F24D2F6AD3C4000602C5 /* SwiftUI.framework */; };
+		9664397F2F7CC72200FCCD27 /* CollegeAppWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9664396C2F7CC71F00FCCD27 /* CollegeAppWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,6 +28,13 @@
 			remoteGlobalIDString = 9609F1702F6111D3000602C5;
 			remoteInfo = CollegeApp;
 		};
+		9664397D2F7CC72200FCCD27 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9609F1692F6111D3000602C5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9664396B2F7CC71F00FCCD27;
+			remoteInfo = CollegeAppWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -34,6 +44,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				9664397F2F7CC72200FCCD27 /* CollegeAppWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -46,12 +57,42 @@
 		9609F1882F6111D9000602C5 /* CollegeAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CollegeAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9609F24B2F6AD3C3000602C5 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		9609F24D2F6AD3C4000602C5 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		9664396C2F7CC71F00FCCD27 /* CollegeAppWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CollegeAppWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		966439842F7CC73300FCCD27 /* CollegeAppWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CollegeAppWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		966439802F7CC72200FCCD27 /* Exceptions for "CollegeAppWidget" folder in "CollegeAppWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9664396B2F7CC71F00FCCD27 /* CollegeAppWidgetExtension */;
+		};
+		966439882F7CC8B400FCCD27 /* Exceptions for "CollegeApp" folder in "CollegeAppWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Course/CourseStorage.swift,
+			);
+			target = 9664396B2F7CC71F00FCCD27 /* CollegeAppWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9609F1E02F651C66000602C5 /* CollegeApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				966439882F7CC8B400FCCD27 /* Exceptions for "CollegeApp" folder in "CollegeAppWidgetExtension" target */,
+			);
 			path = CollegeApp;
+			sourceTree = "<group>";
+		};
+		9664396F2F7CC71F00FCCD27 /* CollegeAppWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				966439802F7CC72200FCCD27 /* Exceptions for "CollegeAppWidget" folder in "CollegeAppWidgetExtension" target */,
+			);
+			path = CollegeAppWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -79,13 +120,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		966439692F7CC71F00FCCD27 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9664396E2F7CC71F00FCCD27 /* SwiftUI.framework in Frameworks */,
+				9664396D2F7CC71F00FCCD27 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		9609F1682F6111D3000602C5 = {
 			isa = PBXGroup;
 			children = (
+				966439842F7CC73300FCCD27 /* CollegeAppWidgetExtension.entitlements */,
 				9609F1E02F651C66000602C5 /* CollegeApp */,
+				9664396F2F7CC71F00FCCD27 /* CollegeAppWidget */,
 				9609F24A2F6AD3C3000602C5 /* Frameworks */,
 				9609F1722F6111D3000602C5 /* Products */,
 			);
@@ -97,6 +149,7 @@
 				9609F1712F6111D3000602C5 /* CollegeApp.app */,
 				9609F17E2F6111D8000602C5 /* CollegeAppTests.xctest */,
 				9609F1882F6111D9000602C5 /* CollegeAppUITests.xctest */,
+				9664396C2F7CC71F00FCCD27 /* CollegeAppWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,6 +178,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				9664397E2F7CC72200FCCD27 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9609F1E02F651C66000602C5 /* CollegeApp */,
@@ -177,6 +231,28 @@
 			productReference = 9609F1882F6111D9000602C5 /* CollegeAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		9664396B2F7CC71F00FCCD27 /* CollegeAppWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 966439812F7CC72200FCCD27 /* Build configuration list for PBXNativeTarget "CollegeAppWidgetExtension" */;
+			buildPhases = (
+				966439682F7CC71F00FCCD27 /* Sources */,
+				966439692F7CC71F00FCCD27 /* Frameworks */,
+				9664396A2F7CC71F00FCCD27 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9664396F2F7CC71F00FCCD27 /* CollegeAppWidget */,
+			);
+			name = CollegeAppWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = CollegeAppWidgetExtension;
+			productReference = 9664396C2F7CC71F00FCCD27 /* CollegeAppWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +273,9 @@
 					9609F1872F6111D9000602C5 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 9609F1702F6111D3000602C5;
+					};
+					9664396B2F7CC71F00FCCD27 = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
@@ -220,6 +299,7 @@
 				9609F1702F6111D3000602C5 /* CollegeApp */,
 				9609F17D2F6111D8000602C5 /* CollegeAppTests */,
 				9609F1872F6111D9000602C5 /* CollegeAppUITests */,
+				9664396B2F7CC71F00FCCD27 /* CollegeAppWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -240,6 +320,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9609F1862F6111D9000602C5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9664396A2F7CC71F00FCCD27 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -270,6 +357,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		966439682F7CC71F00FCCD27 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -282,6 +376,11 @@
 			isa = PBXTargetDependency;
 			target = 9609F1702F6111D3000602C5 /* CollegeApp */;
 			targetProxy = 9609F1892F6111D9000602C5 /* PBXContainerItemProxy */;
+		};
+		9664397E2F7CC72200FCCD27 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9664396B2F7CC71F00FCCD27 /* CollegeAppWidgetExtension */;
+			targetProxy = 9664397D2F7CC72200FCCD27 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -565,6 +664,68 @@
 			};
 			name = Release;
 		};
+		966439822F7CC72200FCCD27 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = CollegeAppWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 32M3HGS7LU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CollegeAppWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CollegeAppWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wesleywang.CollegeApp.CollegeAppWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		966439832F7CC72200FCCD27 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = CollegeAppWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 32M3HGS7LU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CollegeAppWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CollegeAppWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wesleywang.CollegeApp.CollegeAppWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -600,6 +761,15 @@
 			buildConfigurations = (
 				9609F1992F6111D9000602C5 /* Debug */,
 				9609F19A2F6111D9000602C5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		966439812F7CC72200FCCD27 /* Build configuration list for PBXNativeTarget "CollegeAppWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				966439822F7CC72200FCCD27 /* Debug */,
+				966439832F7CC72200FCCD27 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
