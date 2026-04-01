@@ -89,12 +89,5 @@
 
 請參閱 [Releases](https://github.com/wangwesley1125/CollegeApp-NKUST/releases) 頁面
 
-## v1.2.1（正在進行...)
-- 新增圖書館 QR Code 和 Bar Code
-- 課表顯示一到五的課程
-- 行事曆一次顯示四個學期
-- 新增訪客進入，校外人士也能瀏覽高科校園
-- 加入小工具(Ｗidget)
-
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
