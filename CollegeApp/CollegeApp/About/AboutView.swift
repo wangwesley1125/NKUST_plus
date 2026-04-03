@@ -84,13 +84,33 @@ struct AboutView: View {
                         .foregroundColor(.teal)
                     }
                     
-//                    Link(destination: URL(string: "https://www.threads.com/@nkust_plus?invite=0")!) {
+//                    Link(destination: URL(string: "")!) {
 //                        HStack {
 //                            Image(systemName: "at.circle.fill")
 //                            Text("Threads")
 //                        }
 //                        .foregroundColor(.teal)
 //                    }
+                    
+                }
+                
+                // 高科大學生專區
+                Section("學生專區") {
+                    
+                    Link(destination: URL(string: "https://enterschool.nkust.edu.tw/")!) {
+                        Text("新生專區")
+                    }
+                    .foregroundColor(.teal)
+                    
+                    Link(destination: URL(string: "https://elearning.nkust.edu.tw/moocs/#/home")!) {
+                        Text("Elearnring 教學平台")
+                    }
+                    .foregroundColor(.teal)
+                    
+                    Link(destination: URL(string: "https://ws1.nkust.edu.tw/Activity/")!) {
+                        Text("活動訊息平台")
+                    }
+                    .foregroundColor(.teal)
                     
                 }
                 
