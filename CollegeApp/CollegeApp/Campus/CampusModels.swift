@@ -155,7 +155,7 @@ struct BuildingDetailSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .presentationDetents(
             building.classrooms.isEmpty
-            ? [.height(110)]
+            ? [.height(200)]
             : [.height(400)]
         )
         .presentationContentInteraction(.scrolls)
