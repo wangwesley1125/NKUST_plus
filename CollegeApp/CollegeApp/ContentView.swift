@@ -41,6 +41,13 @@ struct ContentView: View {
                     Image(systemName: "map")
                     Text("校園地圖")
                 }
+
+            // 校車預約
+            ShuttleBusView(cookies: cookies)
+                .tabItem {
+                    Image(systemName: "bus.fill")
+                    Text("校車預約")
+                }
             
             // 設定
 //            SettingView(isLoggedIn: $isLoggedIn, cookies: cookies)
