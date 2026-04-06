@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WebKit
 
 // MARK: - Models
 
@@ -16,7 +17,7 @@ struct BusTrip: Identifiable {
     let reservedCount: Int
     let note: String
     let isReserved: Bool
-    let reserveId: Int  // 0 = 未預約
+    let reserveId: Int
 }
 
 struct ReserveResponse: Decodable {
@@ -41,14 +42,41 @@ let busRoutes: [BusRoute] = [
     BusRoute(label: "第一 ➜ 建工", beginStation: "第一", endStation: "建工"),
 ]
 
+// MARK: - VMS Cookie 儲存
+
+struct VMSCookieStorage {
+    static let key = "vmsSavedCookies"
+
+    static func save(_ cookies: [HTTPCookie]) {
+        let data = cookies.compactMap { cookie -> [String: Any]? in
+            cookie.properties?.reduce(into: [String: Any]()) { result, pair in
+                result[pair.key.rawValue] = pair.value
+            }
+        }
+        UserDefaults.standard.set(data, forKey: key)
+    }
+
+    static func load() -> [HTTPCookie] {
+        guard let data = UserDefaults.standard.array(forKey: key) as? [[String: Any]] else { return [] }
+        return data.compactMap { dict in
+            let properties = dict.reduce(into: [HTTPCookiePropertyKey: Any]()) { result, pair in
+                result[HTTPCookiePropertyKey(pair.key)] = pair.value
+            }
+            return HTTPCookie(properties: properties)
+        }
+    }
+
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+}
+
 // MARK: - HTML 解析器
 
 struct TimetableParser {
     static func parse(html: String) -> [BusTrip] {
         var trips: [BusTrip] = []
-
-        // 用 <tr> 切分每一列
-        let rows = html.components(separatedBy: "<tr>").dropFirst(2) // 跳過 header
+        let rows = html.components(separatedBy: "<tr>").dropFirst(2)
 
         for row in rows {
             guard row.contains("BusId") else { continue }
@@ -58,7 +86,7 @@ struct TimetableParser {
             let stateCode = extractHiddenValue(id: "ReserveStateCode", in: row) ?? ""
             let isReserved = stateCode == "0" && reserveId != 0
 
-            let time  = extractCellText(containing: ":", in: row) ?? "--:--"
+            let time  = extractTimeCell(in: row) ?? "--:--"
             let count = extractCount(in: row) ?? 0
             let note  = extractNote(in: row) ?? ""
 
@@ -74,30 +102,22 @@ struct TimetableParser {
         return trips
     }
 
-    // 擷取 <input type="hidden" id="XXX" value="YYY" />
     private static func extractHiddenValue(id: String, in html: String) -> String? {
-        let pattern = #"id="\#(id)"[^>]*value="([^"]*)"#
+        let pattern = "id=\"\(id)\"[^>]*value=\"([^\"]*)\""
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
               let r = Range(match.range(at: 1), in: html) else { return nil }
         return String(html[r])
     }
 
-    // 擷取時間欄（包含 ":" 的 td）
-    private static func extractCellText(containing substring: String, in html: String) -> String? {
-        let tdPattern = #"<td[^>]*>([\d:]+)</td>"#
-        guard let regex = try? NSRegularExpression(pattern: tdPattern) else { return nil }
-        let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
-        for match in matches {
-            if let r = Range(match.range(at: 1), in: html) {
-                let text = String(html[r])
-                if text.contains(substring) { return text }
-            }
-        }
-        return nil
+    private static func extractTimeCell(in html: String) -> String? {
+        let pattern = #"<td[^>]*>([\d]{2}:[\d]{2})</td>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              let r = Range(match.range(at: 1), in: html) else { return nil }
+        return String(html[r])
     }
 
-    // 擷取預約人數（時間後的第一個純數字 td）
     private static func extractCount(in html: String) -> Int? {
         let pattern = #"<td[^>]*>(\d+)</td>"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -106,7 +126,6 @@ struct TimetableParser {
         return Int(String(html[r]))
     }
 
-    // 班次說明（最後一個 td 的文字）
     private static func extractNote(in html: String) -> String? {
         let pattern = #"<td[^>]*>([^<]*)</td>\s*</tr>"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -116,91 +135,243 @@ struct TimetableParser {
     }
 }
 
+// MARK: - 信任 nkust.edu.tw SSL 的 URLSession delegate
+
+private class NKUSTSessionDelegate: NSObject, URLSessionDelegate {
+    func urlSession(_ session: URLSession,
+                    didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        if challenge.protectionSpace.host.hasSuffix("nkust.edu.tw"),
+           let trust = challenge.protectionSpace.serverTrust {
+            completionHandler(.useCredential, URLCredential(trust: trust))
+        } else {
+            completionHandler(.performDefaultHandling, nil)
+        }
+    }
+}
+
 // MARK: - 網路服務
 
 class ShuttleBusService {
     static let shared = ShuttleBusService()
     private let baseURL = "https://vms.nkust.edu.tw"
 
-    // 取得 CSRF Token
-    func fetchToken(cookies: [HTTPCookie]) async throws -> String {
-        var request = URLRequest(url: URL(string: "\(baseURL)/Bus/Bus")!)
-        applyHeaders(to: &request, cookies: cookies)
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let html = String(data: data, encoding: .utf8) ?? ""
+    // 所有 URLSession 請求都走這個，繞過 vms SSL 憑證問題
+    private let session: URLSession = {
+        let delegate = NKUSTSessionDelegate()
+        let config = URLSessionConfiguration.default
+        config.httpCookieAcceptPolicy = .always
+        config.httpShouldSetCookies = true
+        return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+    }()
 
-        let pattern = #"name="__RequestVerificationToken"[^>]*value="([^"]+)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-              let r = Range(match.range(at: 1), in: html) else {
-            throw URLError(.cannotParseResponse)
-        }
-        return String(html[r])
+    // MARK: 確認登入狀態
+    func checkExpire(cookies: [HTTPCookie]) async -> Bool {
+        var request = URLRequest(url: URL(string: "\(baseURL)/Account/CheckExpire")!)
+        applyHeaders(to: &request, cookies: cookies)
+        guard let (data, _) = try? await session.data(for: request),
+              let text = String(data: data, encoding: .utf8) else { return false }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines) == "alive"
     }
 
-    // 取得班次列表
+    // MARK: 自動登入（用 Keychain 帳密，不需要 CAPTCHA）
+    func autoLogin(username: String, password: String) async -> [HTTPCookie]? {
+        // Step 1: GET 登入頁取得 CSRF Token
+        guard let token = await fetchLoginPageToken() else {
+            print("❌ autoLogin: 無法取得登入頁 Token")
+            return nil
+        }
+        print("✅ autoLogin: 取得登入頁 Token")
+
+        // Step 2: POST 登入，不跟隨 302 跳轉（Cookie 在這次回應 header 裡）
+        var request = URLRequest(url: URL(string: "\(baseURL)/")!)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue(baseURL, forHTTPHeaderField: "Referer")
+        request.httpShouldHandleCookies = false  // 手動處理 Cookie
+
+        let encodedUser  = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? username
+        let encodedPass  = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? password
+        let encodedToken = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? token
+        request.httpBody = "Account=\(encodedUser)&Password=\(encodedPass)&__RequestVerificationToken=\(encodedToken)&RememberMe=false".data(using: .utf8)
+
+        guard let (_, response) = try? await session.data(for: request),
+              let httpResponse = response as? HTTPURLResponse else {
+            print("❌ autoLogin: POST 請求失敗")
+            return nil
+        }
+
+        print("✅ autoLogin POST 狀態碼：\(httpResponse.statusCode)")
+
+        // Step 3: 從 302 回應 header 取出 Set-Cookie
+        let headers = httpResponse.allHeaderFields as? [String: String] ?? [:]
+        let cookies = HTTPCookie.cookies(
+            withResponseHeaderFields: headers,
+            for: URL(string: baseURL)!
+        )
+        print("✅ autoLogin 取得 Cookie 數：\(cookies.count)")
+
+        // Step 4: 確認登入成功
+        let alive = await checkExpire(cookies: cookies)
+        print(alive ? "✅ autoLogin 成功" : "❌ autoLogin: checkExpire 失敗")
+        return alive ? cookies : nil
+    }
+
+    private func fetchLoginPageToken() async -> String? {
+        guard let (data, _) = try? await session.data(from: URL(string: "\(baseURL)/")!),
+              let html = String(data: data, encoding: .utf8) else { return nil }
+        return extractToken(from: html)
+    }
+
+    // MARK: 取得班次頁 Token（從 /Bus/Bus/Timetable）
+    func fetchBusToken(cookies: [HTTPCookie]) async throws -> String {
+        var request = URLRequest(url: URL(string: "\(baseURL)/Bus/Bus/Timetable")!)
+        applyHeaders(to: &request, cookies: cookies)
+        let (data, _) = try await session.data(for: request)
+        let html = String(data: data, encoding: .utf8) ?? ""
+        guard let token = extractToken(from: html) else {
+            throw URLError(.cannotParseResponse)
+        }
+        return token
+    }
+
+    // MARK: 取得班次列表
     func fetchTimetable(date: Date, route: BusRoute, token: String, cookies: [HTTPCookie]) async throws -> [BusTrip] {
         var request = URLRequest(url: URL(string: "\(baseURL)/Bus/Bus/GetTimetableGrid")!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("\(baseURL)/Bus/Bus", forHTTPHeaderField: "Referer")
+        request.setValue("\(baseURL)/Bus/Bus/Timetable", forHTTPHeaderField: "Referer")
         applyHeaders(to: &request, cookies: cookies)
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy/MM/dd"
         let dateStr = formatter.string(from: date)
+        let encodedDate  = dateStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? dateStr
+        let encodedBegin = route.beginStation.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedEnd   = route.endStation.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
 
-        let body = "driveDate=\(dateStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? dateStr)&beginStation=\(route.beginStation.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&endStation=\(route.endStation.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&__RequestVerificationToken=\(token)"
-        request.httpBody = body.data(using: .utf8)
+        request.httpBody = "driveDate=\(encodedDate)&beginStation=\(encodedBegin)&endStation=\(encodedEnd)&__RequestVerificationToken=\(token)".data(using: .utf8)
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await session.data(for: request)
         let html = String(data: data, encoding: .utf8) ?? ""
         return TimetableParser.parse(html: html)
     }
 
-    // 預約
+    // MARK: 預約
     func createReserve(busId: Int, token: String, cookies: [HTTPCookie]) async throws -> ReserveResponse {
         var request = URLRequest(url: URL(string: "\(baseURL)/Bus/Bus/CreateReserve")!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("\(baseURL)/Bus/Bus", forHTTPHeaderField: "Referer")
+        request.setValue("\(baseURL)/Bus/Bus/Timetable", forHTTPHeaderField: "Referer")
         applyHeaders(to: &request, cookies: cookies)
         request.httpBody = "busId=\(busId)&__RequestVerificationToken=\(token)".data(using: .utf8)
-
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await session.data(for: request)
         return try JSONDecoder().decode(ReserveResponse.self, from: data)
     }
 
-    // 取消預約
+    // MARK: 取消預約
     func cancelReserve(reserveId: Int, token: String, cookies: [HTTPCookie]) async throws -> ReserveResponse {
         var request = URLRequest(url: URL(string: "\(baseURL)/Bus/Bus/CancelReserve")!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("\(baseURL)/Bus/Bus", forHTTPHeaderField: "Referer")
+        request.setValue("\(baseURL)/Bus/Bus/Timetable", forHTTPHeaderField: "Referer")
         applyHeaders(to: &request, cookies: cookies)
         request.httpBody = "reserveId=\(reserveId)&__RequestVerificationToken=\(token)".data(using: .utf8)
-
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await session.data(for: request)
         return try JSONDecoder().decode(ReserveResponse.self, from: data)
     }
 
-    // 確認登入狀態
-    func checkExpire(cookies: [HTTPCookie]) async -> Bool {
-        var request = URLRequest(url: URL(string: "\(baseURL)/Account/CheckExpire")!)
-        applyHeaders(to: &request, cookies: cookies)
-        guard let (data, _) = try? await URLSession.shared.data(for: request),
-              let text = String(data: data, encoding: .utf8) else { return false }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines) == "alive"
+    // MARK: 共用工具
+    private func extractToken(from html: String) -> String? {
+        let pattern = #"name="__RequestVerificationToken"[^>]*value="([^"]+)""#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              let r = Range(match.range(at: 1), in: html) else { return nil }
+        return String(html[r])
     }
 
     private func applyHeaders(to request: inout URLRequest, cookies: [HTTPCookie]) {
         HTTPCookie.requestHeaderFields(with: cookies).forEach {
             request.setValue($0.value, forHTTPHeaderField: $0.key)
         }
-        // XSRF Token（如果有）
-        if let xsrf = cookies.first(where: { $0.name == "XSRF-TOKEN" }) {
-            request.setValue(xsrf.value, forHTTPHeaderField: "X-XSRF-TOKEN")
+    }
+}
+
+// MARK: - VMS WKWebView 登入（fallback）
+
+struct VMSLoginWebView: UIViewRepresentable {
+    @Binding var vmsCookies: [HTTPCookie]
+    @Binding var isLoggedIn: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.navigationDelegate = context.coordinator
+        webView.load(URLRequest(url: URL(string: "https://vms.nkust.edu.tw/")!))
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
+
+    class Coordinator: NSObject, WKNavigationDelegate {
+        var parent: VMSLoginWebView
+        init(_ parent: VMSLoginWebView) { self.parent = parent }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard let url = webView.url?.absoluteString else { return }
+            print("VMS WebView 目前 URL：\(url)")
+
+            if url.contains("vms.nkust.edu.tw/Home/Index") {
+                WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                    let vmsCookies = cookies.filter { $0.domain.contains("vms.nkust.edu.tw") }
+                    print("VMS WKWebView 取得 Cookie 數：\(vmsCookies.count)")
+                    guard !vmsCookies.isEmpty else { return }
+                    DispatchQueue.main.async {
+                        self.parent.vmsCookies = vmsCookies
+                        VMSCookieStorage.save(vmsCookies)
+                        self.parent.isLoggedIn = true
+                    }
+                }
+            }
         }
+
+        func webView(_ webView: WKWebView,
+                     didReceive challenge: URLAuthenticationChallenge,
+                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+            if challenge.protectionSpace.host.hasSuffix("nkust.edu.tw"),
+               let trust = challenge.protectionSpace.serverTrust {
+                completionHandler(.useCredential, URLCredential(trust: trust))
+            } else {
+                completionHandler(.performDefaultHandling, nil)
+            }
+        }
+    }
+}
+
+// MARK: - VMS 登入畫面
+
+struct VMSLoginView: View {
+    @Binding var vmsCookies: [HTTPCookie]
+    @Binding var isLoggedIn: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.teal)
+                Text("車輛管理系統需要獨立登入")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+            .background(Color(.systemGroupedBackground))
+
+            VMSLoginWebView(vmsCookies: $vmsCookies, isLoggedIn: $isLoggedIn)
+        }
+        .navigationTitle("登入校車系統")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -209,11 +380,16 @@ class ShuttleBusService {
 struct ShuttleBusView: View {
     let cookies: [HTTPCookie]
 
+    @State private var vmsCookies: [HTTPCookie] = VMSCookieStorage.load()
+    @State private var isVmsLoggedIn = false
+    @State private var isCheckingLogin = true
+    @State private var showManualLogin = false
+
     @State private var selectedRoute = busRoutes[0]
     @State private var selectedDate  = Date()
     @State private var trips: [BusTrip] = []
     @State private var token = ""
-    @State private var isLoading = true
+    @State private var isLoading = false
     @State private var isActionLoading = false
     @State private var errorMessage: String?
     @State private var toast: ToastMessage?
@@ -221,18 +397,47 @@ struct ShuttleBusView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isLoading {
-                    loadingView
+                if isCheckingLogin {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("驗證登入狀態…").foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                } else if !isVmsLoggedIn {
+                    needsLoginView
+
+                } else if isLoading {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("載入班次中…").foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 } else if let error = errorMessage {
                     errorView(error)
+
                 } else {
-                    tripList
+                    tripListView
                 }
             }
             .navigationTitle("校車預約")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbarContent }
-            .task { await initialLoad() }
+            .toolbar {
+                if isVmsLoggedIn && !isCheckingLogin {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                            .labelsHidden()
+                            .onChange(of: selectedDate) { _, _ in
+                                Task { await loadTimetable() }
+                            }
+                    }
+                }
+            }
+            .task { await checkAndLogin() }
+            .onChange(of: isVmsLoggedIn) { _, loggedIn in
+                if loggedIn { Task { await initialLoad() } }
+            }
             .overlay(alignment: .bottom) {
                 if let toast = toast {
                     ToastView(message: toast)
@@ -243,37 +448,50 @@ struct ShuttleBusView: View {
         }
     }
 
-    // MARK: - 路線 + 日期選擇器
+    // MARK: - 未登入畫面
 
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                .labelsHidden()
-                .onChange(of: selectedDate) { _, _ in
-                    Task { await loadTimetable() }
-                }
+    private var needsLoginView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "bus.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.teal)
+            Text("需要登入車輛管理系統")
+                .font(.headline)
+            Text("校車預約使用獨立的登入系統，請點下方按鈕登入。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button("前往登入") { showManualLogin = true }
+                .buttonStyle(.borderedProminent)
+                .tint(.teal)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationDestination(isPresented: $showManualLogin) {
+            VMSLoginView(vmsCookies: $vmsCookies, isLoggedIn: $isVmsLoggedIn)
         }
     }
 
-    // MARK: - 路線選擇 + 班次列表
+    // MARK: - 班次畫面
 
-    private var tripList: some View {
+    private var tripListView: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // 路線切換
                 routePicker
-
-                // 班次列表
                 if trips.isEmpty {
-                    emptyView
+                    VStack(spacing: 12) {
+                        Image(systemName: "bus")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("此日期無班次")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 60)
                 } else {
                     LazyVStack(spacing: 10) {
                         ForEach(trips) { trip in
-                            TripRowView(
-                                trip: trip,
-                                isActionLoading: isActionLoading
-                            ) {
+                            TripRowView(trip: trip, isActionLoading: isActionLoading) {
                                 Task { await handleTap(trip: trip) }
                             }
                         }
@@ -308,26 +526,6 @@ struct ShuttleBusView: View {
         }
     }
 
-    private var emptyView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "bus")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("此日期無班次")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
-    }
-
-    private var loadingView: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("載入中…").foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
@@ -344,25 +542,55 @@ struct ShuttleBusView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - 邏輯
+    // MARK: - 登入邏輯
+
+    func checkAndLogin() async {
+        isCheckingLogin = true
+
+        // 1. 先試存好的 vms Cookie
+        if !vmsCookies.isEmpty {
+            let alive = await ShuttleBusService.shared.checkExpire(cookies: vmsCookies)
+            if alive {
+                print("✅ 已儲存的 vms Cookie 有效")
+                isVmsLoggedIn = true
+                isCheckingLogin = false
+                await initialLoad()
+                return
+            }
+            print("⚠️ 已儲存的 vms Cookie 已過期")
+        }
+
+        // 2. 試用 Keychain 帳密自動登入（vms 無 CAPTCHA，可直接用）
+        if let cred = CredentialStorage.load() {
+            print("🔑 嘗試用 Keychain 帳密自動登入 vms")
+            if let newCookies = await ShuttleBusService.shared.autoLogin(
+                username: cred.username, password: cred.password) {
+                vmsCookies = newCookies
+                VMSCookieStorage.save(newCookies)
+                isVmsLoggedIn = true
+                isCheckingLogin = false
+                await initialLoad()
+                return
+            }
+            print("⚠️ Keychain 自動登入失敗，顯示手動登入")
+        } else {
+            print("⚠️ Keychain 無帳密，顯示手動登入")
+        }
+
+        // 3. 都失敗 → 顯示手動登入按鈕
+        isVmsLoggedIn = false
+        isCheckingLogin = false
+    }
 
     func initialLoad() async {
         isLoading = true
         errorMessage = nil
-
-        // 先確認登入狀態
-        let alive = await ShuttleBusService.shared.checkExpire(cookies: cookies)
-        guard alive else {
-            errorMessage = "登入已過期，請重新登入"
-            isLoading = false
-            return
-        }
-
         do {
-            token = try await ShuttleBusService.shared.fetchToken(cookies: cookies)
+            token = try await ShuttleBusService.shared.fetchBusToken(cookies: vmsCookies)
             await loadTimetable()
         } catch {
-            errorMessage = "無法連線至校車系統"
+            errorMessage = "無法連線至校車系統，請稍後再試"
+            print("❌ fetchBusToken 失敗：\(error)")
         }
         isLoading = false
     }
@@ -371,13 +599,10 @@ struct ShuttleBusView: View {
         isLoading = true
         do {
             trips = try await ShuttleBusService.shared.fetchTimetable(
-                date: selectedDate,
-                route: selectedRoute,
-                token: token,
-                cookies: cookies
-            )
+                date: selectedDate, route: selectedRoute, token: token, cookies: vmsCookies)
         } catch {
             errorMessage = "無法取得班次資料"
+            print("❌ fetchTimetable 失敗：\(error)")
         }
         isLoading = false
     }
@@ -391,29 +616,23 @@ struct ShuttleBusView: View {
             let response: ReserveResponse
             if trip.isReserved {
                 response = try await ShuttleBusService.shared.cancelReserve(
-                    reserveId: trip.reserveId, token: token, cookies: cookies)
+                    reserveId: trip.reserveId, token: token, cookies: vmsCookies)
             } else {
                 response = try await ShuttleBusService.shared.createReserve(
-                    busId: trip.busId, token: token, cookies: cookies)
+                    busId: trip.busId, token: token, cookies: vmsCookies)
             }
 
             withAnimation(.spring(response: 0.35)) {
-                toast = ToastMessage(
-                    text: response.title,
-                    isSuccess: response.success,
-                    id: UUID()
-                )
+                toast = ToastMessage(text: response.title, isSuccess: response.success, id: UUID())
             }
 
             if response.success {
                 await loadTimetable()
-                // 重新取 token（伺服器可能更新）
-                if let newToken = try? await ShuttleBusService.shared.fetchToken(cookies: cookies) {
+                if let newToken = try? await ShuttleBusService.shared.fetchBusToken(cookies: vmsCookies) {
                     token = newToken
                 }
             }
 
-            // Toast 自動消失
             try? await Task.sleep(for: .seconds(2.5))
             withAnimation { toast = nil }
 
@@ -436,7 +655,6 @@ struct TripRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // 狀態圖示
             ZStack {
                 Circle()
                     .fill(trip.isReserved ? Color.teal.opacity(0.15) : Color(.systemGray5))
@@ -446,7 +664,6 @@ struct TripRowView: View {
                     .foregroundStyle(trip.isReserved ? .teal : .secondary)
             }
 
-            // 時間與說明
             VStack(alignment: .leading, spacing: 2) {
                 Text(trip.departureTime)
                     .font(.title3.monospacedDigit().weight(.semibold))
@@ -459,7 +676,6 @@ struct TripRowView: View {
 
             Spacer()
 
-            // 預約人數
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(trip.reservedCount)")
                     .font(.title3.monospacedDigit().weight(.medium))
@@ -469,7 +685,6 @@ struct TripRowView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // 預約 / 取消按鈕
             Button(action: onTap) {
                 Text(trip.isReserved ? "取消" : "預約")
                     .font(.subheadline.weight(.semibold))
