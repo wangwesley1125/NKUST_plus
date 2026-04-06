@@ -156,13 +156,11 @@ class ShuttleBusService {
     static let shared = ShuttleBusService()
     private let baseURL = "https://vms.nkust.edu.tw"
 
-    // 所有 URLSession 請求都走這個，繞過 vms SSL 憑證問題
     private let session: URLSession = {
-        let delegate = NKUSTSessionDelegate()
         let config = URLSessionConfiguration.default
         config.httpCookieAcceptPolicy = .always
         config.httpShouldSetCookies = true
-        return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        return URLSession(configuration: config, delegate: NKUSTSessionDelegate(), delegateQueue: nil)
     }()
 
     // MARK: 確認登入狀態
@@ -174,21 +172,15 @@ class ShuttleBusService {
         return text.trimmingCharacters(in: .whitespacesAndNewlines) == "alive"
     }
 
-    // MARK: 自動登入（用 Keychain 帳密，不需要 CAPTCHA）
+    // MARK: 自動登入（用 Keychain 帳密，vms 無 CAPTCHA）
     func autoLogin(username: String, password: String) async -> [HTTPCookie]? {
-        // Step 1: GET 登入頁取得 CSRF Token
-        guard let token = await fetchLoginPageToken() else {
-            print("❌ autoLogin: 無法取得登入頁 Token")
-            return nil
-        }
-        print("✅ autoLogin: 取得登入頁 Token")
+        guard let token = await fetchLoginPageToken() else { return nil }
 
-        // Step 2: POST 登入，不跟隨 302 跳轉（Cookie 在這次回應 header 裡）
         var request = URLRequest(url: URL(string: "\(baseURL)/")!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue(baseURL, forHTTPHeaderField: "Referer")
-        request.httpShouldHandleCookies = false  // 手動處理 Cookie
+        request.httpShouldHandleCookies = false
 
         let encodedUser  = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? username
         let encodedPass  = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? password
@@ -196,24 +188,12 @@ class ShuttleBusService {
         request.httpBody = "Account=\(encodedUser)&Password=\(encodedPass)&__RequestVerificationToken=\(encodedToken)&RememberMe=false".data(using: .utf8)
 
         guard let (_, response) = try? await session.data(for: request),
-              let httpResponse = response as? HTTPURLResponse else {
-            print("❌ autoLogin: POST 請求失敗")
-            return nil
-        }
+              let httpResponse = response as? HTTPURLResponse else { return nil }
 
-        print("✅ autoLogin POST 狀態碼：\(httpResponse.statusCode)")
-
-        // Step 3: 從 302 回應 header 取出 Set-Cookie
         let headers = httpResponse.allHeaderFields as? [String: String] ?? [:]
-        let cookies = HTTPCookie.cookies(
-            withResponseHeaderFields: headers,
-            for: URL(string: baseURL)!
-        )
-        print("✅ autoLogin 取得 Cookie 數：\(cookies.count)")
+        let cookies = HTTPCookie.cookies(withResponseHeaderFields: headers, for: URL(string: baseURL)!)
 
-        // Step 4: 確認登入成功
         let alive = await checkExpire(cookies: cookies)
-        print(alive ? "✅ autoLogin 成功" : "❌ autoLogin: checkExpire 失敗")
         return alive ? cookies : nil
     }
 
@@ -223,15 +203,13 @@ class ShuttleBusService {
         return extractToken(from: html)
     }
 
-    // MARK: 取得班次頁 Token（從 /Bus/Bus/Timetable）
+    // MARK: 取得班次頁 Token
     func fetchBusToken(cookies: [HTTPCookie]) async throws -> String {
         var request = URLRequest(url: URL(string: "\(baseURL)/Bus/Bus/Timetable")!)
         applyHeaders(to: &request, cookies: cookies)
         let (data, _) = try await session.data(for: request)
         let html = String(data: data, encoding: .utf8) ?? ""
-        guard let token = extractToken(from: html) else {
-            throw URLError(.cannotParseResponse)
-        }
+        guard let token = extractToken(from: html) else { throw URLError(.cannotParseResponse) }
         return token
     }
 
@@ -249,7 +227,6 @@ class ShuttleBusService {
         let encodedDate  = dateStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? dateStr
         let encodedBegin = route.beginStation.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let encodedEnd   = route.endStation.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
         request.httpBody = "driveDate=\(encodedDate)&beginStation=\(encodedBegin)&endStation=\(encodedEnd)&__RequestVerificationToken=\(token)".data(using: .utf8)
 
         let (data, _) = try await session.data(for: request)
@@ -281,7 +258,6 @@ class ShuttleBusService {
         return try JSONDecoder().decode(ReserveResponse.self, from: data)
     }
 
-    // MARK: 共用工具
     private func extractToken(from html: String) -> String? {
         let pattern = #"name="__RequestVerificationToken"[^>]*value="([^"]+)""#
         guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -319,19 +295,16 @@ struct VMSLoginWebView: UIViewRepresentable {
         init(_ parent: VMSLoginWebView) { self.parent = parent }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            guard let url = webView.url?.absoluteString else { return }
-            print("VMS WebView 目前 URL：\(url)")
+            guard let url = webView.url?.absoluteString,
+                  url.contains("vms.nkust.edu.tw/Home/Index") else { return }
 
-            if url.contains("vms.nkust.edu.tw/Home/Index") {
-                WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
-                    let vmsCookies = cookies.filter { $0.domain.contains("vms.nkust.edu.tw") }
-                    print("VMS WKWebView 取得 Cookie 數：\(vmsCookies.count)")
-                    guard !vmsCookies.isEmpty else { return }
-                    DispatchQueue.main.async {
-                        self.parent.vmsCookies = vmsCookies
-                        VMSCookieStorage.save(vmsCookies)
-                        self.parent.isLoggedIn = true
-                    }
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                let vmsCookies = cookies.filter { $0.domain.contains("vms.nkust.edu.tw") }
+                guard !vmsCookies.isEmpty else { return }
+                DispatchQueue.main.async {
+                    self.parent.vmsCookies = vmsCookies
+                    VMSCookieStorage.save(vmsCookies)
+                    self.parent.isLoggedIn = true
                 }
             }
         }
@@ -547,37 +520,27 @@ struct ShuttleBusView: View {
     func checkAndLogin() async {
         isCheckingLogin = true
 
-        // 1. 先試存好的 vms Cookie
         if !vmsCookies.isEmpty {
             let alive = await ShuttleBusService.shared.checkExpire(cookies: vmsCookies)
             if alive {
-                print("✅ 已儲存的 vms Cookie 有效")
                 isVmsLoggedIn = true
                 isCheckingLogin = false
                 await initialLoad()
                 return
             }
-            print("⚠️ 已儲存的 vms Cookie 已過期")
         }
 
-        // 2. 試用 Keychain 帳密自動登入（vms 無 CAPTCHA，可直接用）
-        if let cred = CredentialStorage.load() {
-            print("🔑 嘗試用 Keychain 帳密自動登入 vms")
-            if let newCookies = await ShuttleBusService.shared.autoLogin(
-                username: cred.username, password: cred.password) {
-                vmsCookies = newCookies
-                VMSCookieStorage.save(newCookies)
-                isVmsLoggedIn = true
-                isCheckingLogin = false
-                await initialLoad()
-                return
-            }
-            print("⚠️ Keychain 自動登入失敗，顯示手動登入")
-        } else {
-            print("⚠️ Keychain 無帳密，顯示手動登入")
+        if let cred = CredentialStorage.load(),
+           let newCookies = await ShuttleBusService.shared.autoLogin(
+               username: cred.username, password: cred.password) {
+            vmsCookies = newCookies
+            VMSCookieStorage.save(newCookies)
+            isVmsLoggedIn = true
+            isCheckingLogin = false
+            await initialLoad()
+            return
         }
 
-        // 3. 都失敗 → 顯示手動登入按鈕
         isVmsLoggedIn = false
         isCheckingLogin = false
     }
@@ -590,7 +553,6 @@ struct ShuttleBusView: View {
             await loadTimetable()
         } catch {
             errorMessage = "無法連線至校車系統，請稍後再試"
-            print("❌ fetchBusToken 失敗：\(error)")
         }
         isLoading = false
     }
@@ -602,7 +564,6 @@ struct ShuttleBusView: View {
                 date: selectedDate, route: selectedRoute, token: token, cookies: vmsCookies)
         } catch {
             errorMessage = "無法取得班次資料"
-            print("❌ fetchTimetable 失敗：\(error)")
         }
         isLoading = false
     }

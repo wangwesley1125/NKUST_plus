@@ -28,6 +28,14 @@ struct ContentView: View {
                     Image(systemName: "calendar")
                     Text("個人課表")
                 }
+            
+            // 校車預約
+            ShuttleBusView(cookies: cookies)
+                .tabItem {
+                    Image(systemName: "bus.fill")
+                    Text("校車預約")
+                }
+            
             // 成績
             ScoreView(cookies: cookies)
                 .tabItem {
@@ -40,13 +48,6 @@ struct ContentView: View {
                 .tabItem {
                     Image(systemName: "map")
                     Text("校園地圖")
-                }
-
-            // 校車預約
-            ShuttleBusView(cookies: cookies)
-                .tabItem {
-                    Image(systemName: "bus.fill")
-                    Text("校車預約")
                 }
             
             // 設定
