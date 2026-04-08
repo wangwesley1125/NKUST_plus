@@ -84,13 +84,6 @@ struct AboutView: View {
                         .foregroundColor(.teal)
                     }
                     
-//                    Link(destination: URL(string: "")!) {
-//                        HStack {
-//                            Image(systemName: "at.circle.fill")
-//                            Text("Threads")
-//                        }
-//                        .foregroundColor(.teal)
-//                    }
                     
                 }
                 
@@ -104,6 +97,11 @@ struct AboutView: View {
                     
                     Link(destination: URL(string: "https://elearning.nkust.edu.tw/moocs/#/home")!) {
                         Text("Elearnring 教學平台")
+                    }
+                    .foregroundColor(.teal)
+                    
+                    Link(destination: URL(string: "https://ceq.nkust.edu.tw/Home")!) {
+                        Text("教學意見調查系統")
                     }
                     .foregroundColor(.teal)
                     

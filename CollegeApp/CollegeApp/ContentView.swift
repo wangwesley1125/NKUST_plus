@@ -42,13 +42,6 @@ struct ContentView: View {
                     Text("校園地圖")
                 }
             
-            // 設定
-//            SettingView(isLoggedIn: $isLoggedIn, cookies: cookies)
-//                .tabItem {
-//                    Image(systemName: "person.fill")
-//                    Text("個人")
-//                }
-            
             // 關於
             AboutView()
                 .tabItem {
