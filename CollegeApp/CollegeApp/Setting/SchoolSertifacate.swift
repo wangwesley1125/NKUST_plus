@@ -32,6 +32,8 @@ struct SchoolSertifacate: View {
     @State private var errorMessage: String?
     
     @State private var pdfData: Data?
+    
+    @State private var showEnglishTip = false // 顯示錯誤資訊
 
     var body: some View {
         Group {
@@ -43,12 +45,46 @@ struct SchoolSertifacate: View {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.largeTitle)
                         .foregroundColor(.orange)
+                    
                     Text(error)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                    Button("重試") { Task { await loadCertificate() } }
+                    
+                    if selectedLanguage == .english {
+                        Button("切換回中文版") {
+                            selectedLanguage = .chinese
+                        }
                         .buttonStyle(.borderedProminent)
                         .tint(.teal)
+
+                        Button("可能錯誤原因") {
+                            showEnglishTip = true
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.orange)
+                        .alert("英文在學證明無法下載", isPresented: $showEnglishTip) {
+                            Button("確認", role: .cancel) {}
+                        } message: {
+                            Text("""
+                                以下說明來自學校教務資訊系統：
+                                
+                                您尚未建立英文姓名，倘欲下載英文在學證明書，請依下列流程辦理：
+
+                                一、確認當學期註冊費已繳納完畢。
+
+                                二、填寫「學生變更基本資料申請書」，請於【更改項目】勾選【其他】，並填寫「新增英文姓名：ＯＯＯ」（建議依護照英文姓名填寫）。
+
+                                三、將「學生變更基本資料申請書」繳交至所屬校區綜合業務處。
+
+                                四、俟承辦人登打完資料即可再次登入此畫面下載英文在學證明書。
+                                """)
+                        }
+                    } else {
+                        Button("重試") { Task { await loadCertificate() } }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.teal)
+                    }
+                    
                 }
                 .padding()
             } else if let doc = pdfDocument {
@@ -78,9 +114,9 @@ struct SchoolSertifacate: View {
                 Button {
                     if let doc = pdfDocument { sharePDF(doc) }
                 } label: {
-                    Image(systemName: "square.and.arrow.up")
+                    Image(systemName: "square.and.arrow.down")
                 }
-                .disabled(pdfDocument == nil)
+                .disabled(pdfDocument == nil || errorMessage != nil)
             }
         }
         .onChange(of: selectedLanguage) {
@@ -117,12 +153,43 @@ struct SchoolSertifacate: View {
             request.setValue(decoded, forHTTPHeaderField: "X-XSRF-TOKEN")
         }
 
+//        guard let (data, response) = try? await URLSession.shared.data(for: request),
+//              let httpResponse = response as? HTTPURLResponse,
+//              httpResponse.statusCode == 200,
+//              let document = PDFDocument(data: data) else {
+//            errorMessage = "無法取得在學證明，請稍後再試"
+//            isLoading = false
+//            return
+//        }
+        
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200,
-              let document = PDFDocument(data: data) else {
+              httpResponse.statusCode == 200 else {
             errorMessage = "無法取得在學證明，請稍後再試"
             isLoading = false
+            isSwitching = false
+            return
+        }
+
+        // 再單獨檢查是否為 PDF
+        guard let document = PDFDocument(data: data) else {
+            if selectedLanguage == .english {
+                errorMessage = """
+                    您尚未建立英文姓名，倘欲下載英文在學證明書，請依下列流程辦理：
+                    
+                    一、確認當學期註冊費已繳納完畢。
+                    
+                    二、填寫「學生變更基本資料申請書」，請於【更改項目】勾選【其他】，並填寫「新增英文姓名：ＯＯＯ」（建議依護照英文姓名填寫）。
+                    
+                    三、將「學生變更基本資料申請書」繳交至所屬校區綜合業務處。
+                    
+                    四、俟承辦人登打完資料即可再次登入此畫面下載英文在學證明書。
+                    """
+            } else {
+                errorMessage = "無法取得在學證明，請稍後再試"
+            }
+            isLoading = false
+            isSwitching = false
             return
         }
 
