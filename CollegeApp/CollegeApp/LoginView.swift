@@ -439,6 +439,12 @@ struct LoginView: View {
     
     // 訪客登入
     @State private var isGuest = false
+    
+    // 刷新頁面
+    @State private var shouldReload = false
+    
+    // 版本更新通知
+    @State private var newAppVersion: String? = nil
 
     var body: some View {
         
@@ -468,6 +474,7 @@ struct LoginView: View {
                         isTransitioning: $isTransitioning,
                         showAutoFillBanner: $showAutoFillBanner,
                         shouldAutoFill: $shouldAutoFill,
+                        shouldReload: $shouldReload,
                         savedCredentials: savedCredentials,
                         onDetectedCredentials: { username, password in
                             // 登入成功後，判斷是否需要新增或更新儲存的帳密
@@ -492,7 +499,20 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity)
                             
                             HStack {
+                                // 刷新頁面按鈕
+                                Button {
+                                    shouldReload = true
+                                } label: {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 7)
+                                }
+                                
                                 Spacer()
+                                
+                                // 訪客登入按鈕
                                 Button {
                                     UserDefaults.standard.set(true, forKey: "isGuest")
                                     isGuest = true
@@ -580,6 +600,29 @@ struct LoginView: View {
                 isTransitioning = false
             }
         }
+        .alert("發現新版本 🎉", isPresented: Binding(
+            get: { newAppVersion != nil },
+            set: { if !$0 { newAppVersion = nil } }
+        )) {
+            Button("前往更新") {
+                if let url = URL(string: "itms-apps://apps.apple.com/app/id6760967835") {
+                    UIApplication.shared.open(url)
+                }
+                newAppVersion = nil
+            }
+            Button("稍後再說", role: .cancel) {
+                newAppVersion = nil
+            }
+        } message: {
+            if let v = newAppVersion {
+                Text("新版本 \(v) 已上架，建議更新以獲得最佳體驗。")
+            }
+        }
+        .task {
+            // 模擬有新版本
+            // newAppVersion = "1.3.4"
+            newAppVersion = await AppUpdateChecker.check()
+        }
     }
 }
 
@@ -593,6 +636,8 @@ struct NKUSTWebView: UIViewRepresentable {
     @Binding var showAutoFillBanner: Bool
     /// LoginView 設為 true 後，WebView 執行 JS 注入帳密
     @Binding var shouldAutoFill: Bool
+    /// 刷新頁面
+    @Binding var shouldReload: Bool
 
     var savedCredentials: (username: String, password: String)?
     /// 登入成功前從表單擷取的帳密，回傳給 LoginView 決定是否儲存
@@ -620,6 +665,14 @@ struct NKUSTWebView: UIViewRepresentable {
             context.coordinator.injectCredentials(into: webView)
             DispatchQueue.main.async {
                 self.shouldAutoFill = false
+            }
+        }
+        
+        // 刷新頁面
+        if shouldReload {
+            webView.reload()
+            DispatchQueue.main.async {
+                self.shouldReload = false
             }
         }
     }
@@ -790,6 +843,23 @@ struct NKUSTWebView: UIViewRepresentable {
             webView.addSubview(overlay)
             overlayView = overlay
         }
+    }
+}
+
+// 版本更新
+struct AppUpdateChecker {
+    static func check() async -> String? {
+        let bundleID = Bundle.main.bundleIdentifier ?? ""
+        let urlString = "https://itunes.apple.com/tw/lookup?bundleId=\(bundleID)"
+        guard let url = URL(string: urlString),
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let results = json["results"] as? [[String: Any]],
+              let appStoreVersion = results.first?["version"] as? String
+        else { return nil }
+
+        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        return currentVersion.compare(appStoreVersion, options: .numeric) == .orderedAscending ? appStoreVersion : nil
     }
 }
 
