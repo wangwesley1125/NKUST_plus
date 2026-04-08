@@ -255,7 +255,21 @@ enum DiyiBuildings {
                  coordinate: CLLocationCoordinate2D(latitude: 22.75617836224247, longitude: 120.33416308362759),
                  description: "",
                  icon: "p.square.fill",
-                  color: Color.blue)
+                  color: Color.blue),
+        Building(name: "行政大樓",
+                 coordinate: CLLocationCoordinate2D(latitude: 22.75679330288692, longitude: 120.33803382884696),
+                 description: "",
+                 icon: "building",
+                  color: Color.gray,
+                 classrooms: [
+                     (floor: "B1F", rooms: ["國際事務處"]),
+                     (floor: "1F", rooms: ["衛生保健組","文書組","總收發室"]),
+                     (floor: "2F", rooms: ["學生事務處"]),
+                     (floor: "3F", rooms: ["總務處"]),
+                     (floor: "4F", rooms: ["教務處","會議室(A440)"]),
+                     (floor: "5F", rooms: ["秘書室","會議室(A523 A527)"]),
+                     (floor: "6F", rooms: ["校長室","副校長室","秘書室","會議室(A607)"])
+                 ])
     ]
 }
 

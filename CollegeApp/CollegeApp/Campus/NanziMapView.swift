@@ -54,7 +54,17 @@ enum NanziBuildings {
                  coordinate: CLLocationCoordinate2D(latitude: 22.726485677888277, longitude: 120.31468842851496),
                  description: "",
                  icon: "building",
-                  color: Color.gray),
+                  color: Color.gray,
+                 classrooms: [
+                     (floor: "1F", rooms: ["聯合辦公室","聯合服務中心","開標會議室","校安中心","國際事務處","楠梓校區總務行政組","總機房","綜合業務處處長室","文件收發室"]),
+                     (floor: "2F", rooms: ["職業安全衛生組","環境保護組","環境安全衛生中心主任室","聯合辦公室"]),
+                     (floor: "3F", rooms: ["校長室","副校長室","秘書室","經營管理處","經營管理處會議室","經營管理處處長室","會客室"]),
+                     (floor: "4F", rooms: ["第一會議室","第二會議室","海洋科技發展處","海洋產業創新研究中心","國際海事公約研究中心","共同教育學院教師研究室"]),
+                     (floor: "5F", rooms: ["共同教育學院","外語教育中心","基礎教育中心","博雅教育中心","藝術文化中心","體育室","共同教育學院教師研究室"]),
+                     (floor: "6F", rooms: ["諮商輔導組","原住民族學生資源中心","資源教室"]),
+                     (floor: "7F", rooms: ["第三會議室","第四會議室"]),
+                     (floor: "8F", rooms: ["第五會議室"])
+                 ]),
         Building(name: "弘德樓",
                  coordinate: CLLocationCoordinate2D(latitude: 22.726257069135166, longitude: 120.31519179778198),
                  description: "",
