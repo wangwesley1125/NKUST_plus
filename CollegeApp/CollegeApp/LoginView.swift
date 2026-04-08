@@ -505,9 +505,11 @@ struct LoginView: View {
                                 } label: {
                                     Image(systemName: "arrow.clockwise")
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                        .padding(.horizontal, 10)
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 14)
                                         .padding(.vertical, 7)
+                                        .background(Color.blue)
+                                        .clipShape(Capsule())
                                 }
                                 
                                 Spacer()
