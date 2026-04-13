@@ -1,0 +1,11 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# 隱藏核心邏輯
+CollegeApp/CollegeApp/Course/CourseParser.swift
+CollegeApp/CollegeApp/Course/CourseService.swift
+CollegeApp/CollegeApp/Setting/ProfileParser.swift
+CollegeApp/CollegeApp/Setting/ProfileService.swift
+CollegeApp/CollegeApp/LoginView.swift
