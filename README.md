@@ -12,7 +12,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/NKUST-Unofficial%20App-orange" />
-  <img src="https://img.shields.io/badge/iOS-26%2B-blue" />
+  <img src="https://img.shields.io/badge/iOS-17%2B-blue" />
   <img src="https://img.shields.io/badge/SwiftUI-Based-green" />
   <img src="https://img.shields.io/badge/使用者-3.21K%2B-brightgreen" />
 </p>
