@@ -84,6 +84,12 @@ struct AboutView: View {
                         .foregroundColor(.teal)
                     }
                     
+                    Link(destination: URL(string: "https://www.instagram.com/nkust_plus?igsh=MXR0NXR3MmJiczAybg%3D%3D&utm_source=qr")!) {
+                        HStack {
+                            Text("追蹤高科 Plus")
+                        }
+                        .foregroundColor(.teal)
+                    }
                     
                 }
                 

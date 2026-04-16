@@ -216,7 +216,7 @@ struct MainView: View {
     }
     
     // 紀錄使用者是否廣告的地方按過叉叉
-    // @State private var showThreadsBanner = !UserDefaults.standard.bool(forKey: "dismissedThreadsBanner")
+     @State private var showInstagramBanner = !UserDefaults.standard.bool(forKey: "dismissedInstagramBanner")
 
     var body: some View {
         NavigationStack {
@@ -229,56 +229,54 @@ struct MainView: View {
                         
                         VStack(alignment: .leading, spacing: 24) {
                             
-                            // MARK: Threads Banner
-//                            if showThreadsBanner {
-//                                HStack(spacing: 12) {
-//                                    Image(systemName: "at.circle.fill")
-//                                        .font(.title3)
-//                                        .foregroundStyle(.white)
-//                                        .frame(width: 36, height: 36)
-//                                        .background(Color.pink)
-//                                        .clipShape(RoundedRectangle(cornerRadius: 9))
-//                                    
-//                                    VStack(alignment: .leading, spacing: 2) {
-//                                        Text("追蹤我們的 Threads！")
-//                                            .font(.subheadline.weight(.semibold))
-//                                        Text("隨時掌握新功能與最新消息 🎉")
-//                                            .font(.caption)
-//                                            .foregroundStyle(.secondary)
-//                                    }
-//                                    
-//                                    Spacer()
-//                                    
-//                                    Link(destination: URL(string: "https://www.threads.com/@nkust_plus?invite=0")!) {
-//                                        Text("追蹤")
-//                                            .font(.caption.weight(.semibold))
-//                                            .foregroundStyle(.white)
-//                                            .padding(.horizontal, 12)
-//                                            .padding(.vertical, 6)
-//                                            .background(Color.pink)
-//                                            .clipShape(Capsule())
-//                                    }
-//                                    
-//                                    Button {
-//                                        withAnimation(.spring(response: 0.3)) {
-//                                            showThreadsBanner = false
-//                                        }
-//                                        UserDefaults.standard.set(true, forKey: "dismissedThreadsBanner")
-//                                    } label: {
-//                                        Image(systemName: "xmark")
-//                                            .font(.caption.weight(.bold))
-//                                            .foregroundStyle(.secondary)
-//                                    }
-//                                }
-//                                .padding(12)
-//                                .background(Color.pink.opacity(0.08))
-//                                .clipShape(RoundedRectangle(cornerRadius: 14))
-//                                .overlay(
-//                                    RoundedRectangle(cornerRadius: 14)
-//                                        .strokeBorder(Color.pink.opacity(0.2), lineWidth: 1)
-//                                )
-//                                .transition(.move(edge: .top).combined(with: .opacity))
-//                            }
+                            // MARK: Instagram Banner
+                            if showInstagramBanner {
+                                HStack(spacing: 12) {
+                                    Image("instagram-logo")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 36, height: 36)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("歡迎追蹤我們的 Instagram！")
+                                            .font(.subheadline.weight(.semibold))
+                                        Text("隨時掌握新功能與最新消息 🎉")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Link(destination: URL(string: "https://www.instagram.com/nkust_plus?igsh=MXR0NXR3MmJiczAybg%3D%3D&utm_source=qr")!) {
+                                        Text("追蹤")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.pink)
+                                            .clipShape(Capsule())
+                                    }
+                                    
+                                    Button {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showInstagramBanner = false
+                                        }
+                                        UserDefaults.standard.set(true, forKey: "dismissedInstagramBanner")
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(12)
+                                .background(Color.pink.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .strokeBorder(Color.pink.opacity(0.2), lineWidth: 1)
+                                )
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                            }
 
                             // MARK: 天氣卡片
                             WeatherCard()
