@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/NKUST-Unofficial%20App-orange" />
   <img src="https://img.shields.io/badge/iOS-17%2B-blue" />
   <img src="https://img.shields.io/badge/SwiftUI-Based-green" />
-  <img src="https://img.shields.io/badge/使用者-3.24K%2B-brightgreen" />
+  <img src="https://img.shields.io/badge/使用者-3.27K%2B-brightgreen" />
 </p>
 
 一款以 **SwiftUI** 打造的 iOS App，專為高科大學生設計，整合校務系統與校園資訊，提供更直覺、快速且安全的使用體驗，並在使用前以清楚的隱私告知與同意流程保障使用者權益。
