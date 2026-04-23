@@ -71,7 +71,15 @@ enum YanchaoBuildings {
                   coordinate: CLLocationCoordinate2D(latitude: 22.77510880590793, longitude: 120.40129606110933),
                   description: "",
                   icon: "building",
-                   color: Color.gray),
+                   color: Color.gray,
+                 classrooms: [
+                     (floor: "B1", rooms: ["停車場"]),
+                     (floor: "1F", rooms: ["行動辦公室","衛保組","健康中心","哺乳室","體育室","綜合業務處處長辦公室","綜合業務處聯合辦公室"]),
+                     (floor: "2F", rooms: ["財務室","總務長室","文書組檔案室","主計室憑證室","節能暨防災監控室"]),
+                     (floor: "3F", rooms: ["人事室","主計室(第二、三、四組)"]),
+                     (floor: "4F", rooms: ["80人會議室","45人會議室","20人會議室","165人會議室","主計室(第一、五組)"]),
+                     (floor: "5F", rooms: ["校長室","副校長室","秘書室"])
+                 ]),
         Building(name: "圖書資訊大樓",
                   coordinate: CLLocationCoordinate2D(latitude: 22.776103150056958, longitude: 120.4009617570848),
                   description: "",
