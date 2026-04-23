@@ -18,6 +18,10 @@ struct CourseView: View {
     @State private var showEmptyPeriods = false
     @AppStorage("showGrid") private var showGrid = false
     
+    // 新增：學期相關
+    @State private var semesters: [CourseSemester] = []
+    @State private var selectedSemester: CourseSemester? = nil
+    
     let weekdays = ["週一","週二","週三","週四","週五","週六","週日"]
     
     var body: some View {
@@ -78,9 +82,41 @@ struct CourseView: View {
                     }
                 }
             }
-            .navigationTitle("我的課表")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // 標題改成學期 Menu
+                ToolbarItem(placement: .principal) {
+                    if semesters.isEmpty {
+                        Text("我的課表")
+                            .font(.headline)
+                    } else {
+                        Menu {
+                            ForEach(semesters) { sem in
+                                Button {
+                                    selectedSemester = sem
+                                    Task { await loadCourses(semester: sem.value) }
+                                } label: {
+                                    if sem.id == selectedSemester?.id {
+                                        Label(sem.text, systemImage: "checkmark")
+                                    } else {
+                                        Text(sem.text)
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(selectedSemester?.text ?? "我的課表")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                
+                // 右側：顯示空堂（UI 不變）
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         withAnimation { showEmptyPeriods.toggle() }
@@ -94,6 +130,7 @@ struct CourseView: View {
                     .disabled(showGrid)
                 }
                 
+                // 左側：格狀切換（UI 不變）
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         withAnimation { showGrid.toggle() }
@@ -104,29 +141,73 @@ struct CourseView: View {
                 }
             }
         }
-        .task { await loadCourses() }
+        .task { await initialLoad() }
     }
     
-    func loadCourses() async {
+    // MARK: - 初始化：抓 studentId → 學期清單 → 課表
+    func initialLoad() async {
+        isLoading = true
+        errorMessage = nil
+        
         do {
-            let html = try await CourseService.shared.fetchCourses(cookies: cookies)
-            // courses = try CourseParser.parse(html: html)
+            let fetchedId = try await CourseService.shared.fetchStudentId(cookies: cookies)
+            let fetchedSemesters = try await CourseService.shared.fetchSemesters(
+                cookies: cookies,
+                studentId: fetchedId
+            )
+            await MainActor.run {
+                semesters = fetchedSemesters
+                // 預設選第一個非暑修的學期（-1 或 -2）
+                selectedSemester = fetchedSemesters.first(where: {
+                    $0.value.hasSuffix("-1") || $0.value.hasSuffix("-2")
+                }) ?? fetchedSemesters.first
+            }
+            await loadCourses(semester: selectedSemester?.value ?? "")
+        } catch {
+            print("學期載入失敗，使用 fallback：\(error)")
+            await loadCourses(semester: "")
+        }
+    }
+    
+    // MARK: - 載入指定學期課表
+    func loadCourses(semester: String) async {
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+        }
+        do {
+            let html = try await CourseService.shared.fetchCourses(
+                cookies: cookies,
+                schoolYearSms: semester
+            )
             let parsed = try CourseParser.parse(html: html)
             let codable = parsed.map {
                 CourseCodable(name: $0.name, teacher: $0.teacher,
                               room: $0.room, period: $0.period, weekday: $0.weekday)
             }
-            CourseStorage.shared.save(courses: codable)
-            print("✅ 已存 \(codable.count) 堂課")
-            WidgetCenter.shared.reloadAllTimelines()
-            courses = parsed
-            // 預設跳到今天
-            let weekday = Calendar.current.component(.weekday, from: Date())
-            selectedDay = weekday == 1 ? 6 : weekday - 2 // 1=日,2=一...
+            // 只有正規學期（非暑修）才更新 Widget
+            let isRegularSemester = semester.hasSuffix("-1") || semester.hasSuffix("-2")
+            let isLatestRegular = semester == semesters.first(where: {
+                $0.value.hasSuffix("-1") || $0.value.hasSuffix("-2")
+            })?.value
+
+            if semester.isEmpty || (isRegularSemester && isLatestRegular) {
+                CourseStorage.shared.save(courses: codable)
+                WidgetCenter.shared.reloadAllTimelines()
+                print("✅ 已存 \(codable.count) 堂課")
+            }
+            await MainActor.run {
+                courses = parsed
+                let weekday = Calendar.current.component(.weekday, from: Date())
+                selectedDay = weekday == 1 ? 6 : weekday - 2
+                isLoading = false
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                isLoading = false
+            }
         }
-        isLoading = false
     }
 }
 
