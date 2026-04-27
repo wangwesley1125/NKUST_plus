@@ -9,54 +9,49 @@ import SwiftUI
 
 struct WeekGridView: View {
     let courses: [Course]
-    
-    let weekdays = ["一", "二", "三", "四", "五"]
-    let columnWidth: CGFloat = 70
-    let rowHeight: CGFloat = 70
-    
-    var body: some View {
-        GeometryReader { geo in
-            let availableWidth = geo.size.width - 36  // 扣掉左側節次欄
-            let colWidth = availableWidth / 5         // 平均分給五天
 
-            ScrollView([.vertical]) {
-                VStack(spacing: 0) {
-                    // 表頭
-                    HStack(spacing: 0) {
-                        Text("")
-                            .frame(width: 36, height: 36)
-                        
-                        ForEach(0..<5, id: \.self) { i in
-                            Text(weekdays[i])
-                                .font(.caption)
-                                .bold()
-                                .frame(width: colWidth, height: 36)
-                        }
+    let weekdays = ["一", "二", "三", "四", "五", "六", "日"]
+    let colWidth: CGFloat = 70
+    let rowHeight: CGFloat = 70
+
+    var body: some View {
+        ScrollView([.vertical, .horizontal]) {
+            VStack(spacing: 0) {
+                // 表頭
+                HStack(spacing: 0) {
+                    Text("")
+                        .frame(width: 36, height: 36)
+
+                    ForEach(0..<7, id: \.self) { i in
+                        Text(weekdays[i])
+                            .font(.caption)
+                            .bold()
+                            .frame(width: colWidth, height: 36)
                     }
-                    
-                    // 每一節
-                    ForEach(CourseParser.periods, id: \.self) { period in
-                        HStack(spacing: 0) {
-                            VStack(spacing: 2) {
-                                if let time = CourseParser.periodTimes[period] {
-                                    Text(time.0).font(.system(size: 10))
-                                    Text(period)
-                                        .font(.caption2)
-                                        .bold()
-                                        .foregroundStyle(.tint)
-                                    Text(time.1).font(.system(size: 10))
+                }
+
+                // 每一節
+                ForEach(CourseParser.periods, id: \.self) { period in
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            if let time = CourseParser.periodTimes[period] {
+                                Text(time.0).font(.system(size: 10))
+                                Text(period)
+                                    .font(.caption2)
+                                    .bold()
+                                    .foregroundStyle(.tint)
+                                Text(time.1).font(.system(size: 10))
+                            }
+                        }
+                        .frame(width: 36, height: rowHeight)
+
+                        ForEach(0..<7, id: \.self) { dayIndex in
+                            GridCell(
+                                course: courses.first {
+                                    $0.weekday == dayIndex && $0.period == period
                                 }
-                            }
-                            .frame(width: 36, height: rowHeight)
-                            
-                            ForEach(0..<5, id: \.self) { dayIndex in
-                                GridCell(
-                                    course: courses.first {
-                                        $0.weekday == dayIndex && $0.period == period
-                                    }
-                                )
-                                .frame(width: colWidth, height: rowHeight)
-                            }
+                            )
+                            .frame(width: colWidth, height: rowHeight)
                         }
                     }
                 }
