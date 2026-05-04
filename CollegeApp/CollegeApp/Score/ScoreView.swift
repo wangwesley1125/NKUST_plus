@@ -212,6 +212,19 @@ struct ScoreView: View {
  
     @ToolbarContentBuilder
     private var semesterPicker: some ToolbarContent {
+        
+        ToolbarItem(placement: .navigationBarLeading) {
+            NavigationLink {
+                MidtermView(cookies: cookies)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                    Text("期中")
+                        .font(.subheadline)
+                }
+            }
+        }
+        
         ToolbarItem(placement: .navigationBarTrailing) {
             if !isLoadingSemesters && !semesters.isEmpty {
                 Menu {
