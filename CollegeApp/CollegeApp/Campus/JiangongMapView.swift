@@ -97,8 +97,14 @@ enum JiangongBuildings {
                  icon: "figure.badminton",
                   color: Color.orange,
                  classrooms: [
-                     (floor: "B1F", rooms: ["健身房", "桌球教室", "韻律教室"]),
-                     (floor: "3F", rooms: ["活動中心 G302", "視聽教室", "羽球場"])
+                     (floor: "B1F", rooms: ["健身房", "桌球教室", "韻律教室","多功能訓練室"]),
+                     (floor: "1F", rooms: ["藝術文化中心展覽廳", "圖書文具部"]),
+                     (floor: "2F", rooms: ["藝術文化中心表演廳", "學生會行政會議室","學生會行政辦公室"]),
+                     (floor: "3F", rooms: ["活動中心 G302", "視聽教室", "羽球場","體育器材室"]),
+                     (floor: "4F", rooms: ["體育教師研究室", "羽球館看臺"]),
+                     (floor: "5F", rooms: ["學生社團辦公室(體能性社團)"]),
+                     (floor: "6F", rooms: ["學生社團辦公室(系學會、康樂性社團)"]),
+                     (floor: "7F", rooms: ["學生議會辦公室","學生社團辦公室(服務性社團、學藝性社團)"])
                  ]),
         Building(name: "ATM",
                  coordinate: CLLocationCoordinate2D(latitude: 22.649769, longitude: 120.327980),
