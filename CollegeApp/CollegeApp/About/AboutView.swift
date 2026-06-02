@@ -58,7 +58,7 @@ struct AboutView: View {
                         .foregroundColor(.teal)
                     }
                     
-                    Link(destination: URL(string: "mailto:nkustplus@gmail.com?subject=問題回報")!) {
+                    Link(destination: URL(string: "mailto:nkustplus123@gmail.com?subject=問題回報")!) {
                         HStack {
                             Text("問題回報")
                         }
