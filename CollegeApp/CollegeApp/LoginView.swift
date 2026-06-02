@@ -442,9 +442,6 @@ struct LoginView: View {
     
     // 刷新頁面
     @State private var shouldReload = false
-    
-    // 版本更新通知
-    @State private var newAppVersion: String? = nil
 
     var body: some View {
         
@@ -601,29 +598,6 @@ struct LoginView: View {
             if !newValue {
                 isTransitioning = false
             }
-        }
-        .alert("發現新版本 🎉", isPresented: Binding(
-            get: { newAppVersion != nil },
-            set: { if !$0 { newAppVersion = nil } }
-        )) {
-            Button("前往更新") {
-                if let url = URL(string: "itms-apps://apps.apple.com/app/id6760967835") {
-                    UIApplication.shared.open(url)
-                }
-                newAppVersion = nil
-            }
-            Button("稍後再說", role: .cancel) {
-                newAppVersion = nil
-            }
-        } message: {
-            if let v = newAppVersion {
-                Text("新版本 \(v) 已上架，建議更新以獲得最佳體驗。")
-            }
-        }
-        .task {
-            // 模擬有新版本
-            // newAppVersion = "1.3.4"
-            newAppVersion = await AppUpdateChecker.check()
         }
     }
 }
@@ -815,9 +789,9 @@ struct NKUSTWebView: UIViewRepresentable {
                             }
                             CourseStorage.shared.save(courses: codable)
                             WidgetCenter.shared.reloadAllTimelines()
-                            print("✅ 登入後已更新 Widget，共 \(codable.count) 堂課")
+                            print("登入後已更新 Widget，共 \(codable.count) 堂課")
                         } catch {
-                            print("❌ 登入後更新課表失敗：\(error)")
+                            print("登入後更新課表失敗：\(error)")
                         }
                     }
                 }
@@ -850,18 +824,34 @@ struct NKUSTWebView: UIViewRepresentable {
 
 // 版本更新
 struct AppUpdateChecker {
-    static func check() async -> String? {
+    static func check(retries: Int = 2) async -> String? {
         let bundleID = Bundle.main.bundleIdentifier ?? ""
-        let urlString = "https://itunes.apple.com/tw/lookup?bundleId=\(bundleID)"
-        guard let url = URL(string: urlString),
-              let (data, _) = try? await URLSession.shared.data(from: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let results = json["results"] as? [[String: Any]],
-              let appStoreVersion = results.first?["version"] as? String
-        else { return nil }
+        guard let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleID)") else {
+            return nil
+        }
 
-        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        return currentVersion.compare(appStoreVersion, options: .numeric) == .orderedAscending ? appStoreVersion : nil
+        for attempt in 0...retries {
+            do {
+                var req = URLRequest(url: url)
+                req.timeoutInterval = 10
+                req.cachePolicy = .reloadIgnoringLocalCacheData   // 避免讀到剛上架前的舊快取
+                let (data, _) = try await URLSession.shared.data(for: req)
+
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let results = json["results"] as? [[String: Any]],
+                      let storeVersion = results.first?["version"] as? String else {
+                    return nil   // 連得上但格式不對，重試也沒意義
+                }
+
+                let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+                return current.compare(storeVersion, options: .numeric) == .orderedAscending ? storeVersion : nil
+            } catch {
+                if attempt < retries {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)   // 失敗等 1.5 秒再試
+                }
+            }
+        }
+        return nil
     }
 }
 
