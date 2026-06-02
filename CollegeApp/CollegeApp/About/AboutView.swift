@@ -147,7 +147,7 @@ struct AboutView: View {
                     .foregroundColor(.teal)
                     
                     Link(destination: URL(string: "https://oosaf.nkust.edu.tw/")!) {
-                        Text("學務資訊系統（請假 / 曠課 / 講懲 / 幹部...）")
+                        Text("學務資訊系統（請假 / 曠課 / 獎懲 / 幹部...）")
                     }
                     .foregroundColor(.teal)
                     
