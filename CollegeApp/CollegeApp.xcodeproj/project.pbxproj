@@ -62,6 +62,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		966224362FCF09610049CD25 /* Exceptions for "CollegeApp" folder in "CollegeApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9609F1702F6111D3000602C5 /* CollegeApp */;
+		};
 		966439802F7CC72200FCCD27 /* Exceptions for "CollegeAppWidget" folder in "CollegeAppWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -82,6 +89,7 @@
 		9609F1E02F651C66000602C5 /* CollegeApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				966224362FCF09610049CD25 /* Exceptions for "CollegeApp" folder in "CollegeApp" target */,
 				966439882F7CC8B400FCCD27 /* Exceptions for "CollegeApp" folder in "CollegeAppWidgetExtension" target */,
 			);
 			path = CollegeApp;
@@ -519,6 +527,7 @@
 				DEVELOPMENT_TEAM = 32M3HGS7LU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CollegeApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "高科 Plus";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "顯示您在校園中的位置，方便找到目標建築";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -556,6 +565,7 @@
 				DEVELOPMENT_TEAM = 32M3HGS7LU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CollegeApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "高科 Plus";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "顯示您在校園中的位置，方便找到目標建築";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

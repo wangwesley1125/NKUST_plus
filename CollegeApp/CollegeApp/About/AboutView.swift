@@ -58,7 +58,9 @@ struct AboutView: View {
                         .foregroundColor(.teal)
                     }
                     
-                    Link(destination: URL(string: "mailto:nkustplus123@gmail.com?subject=問題回報")!) {
+                    Button {
+                        openFeedbackMail()
+                    } label: {
                         HStack {
                             Text("問題回報")
                         }
@@ -169,6 +171,24 @@ struct AboutView: View {
                 .navigationBarTitleDisplayMode(.inline)
         }
         
+    }
+    
+    // 預設回報問題是開啟 Gmail，如果沒有 Gmail 則開起 Apple 內建的信箱
+    private func openFeedbackMail() {
+        let to = "nkustplus123@gmail.com"
+        let subject = "問題回報".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        // 先試 Gmail App
+        if let gmailURL = URL(string: "googlegmail://co?to=\(to)&subject=\(subject)"),
+           UIApplication.shared.canOpenURL(gmailURL) {
+            UIApplication.shared.open(gmailURL)
+            return
+        }
+
+        // 沒裝 Gmail → 退回系統預設信箱（Apple Mail 等）
+        if let mailtoURL = URL(string: "mailto:\(to)?subject=\(subject)") {
+            UIApplication.shared.open(mailtoURL)
+        }
     }
 }
 
