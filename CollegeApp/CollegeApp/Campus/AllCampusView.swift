@@ -76,13 +76,9 @@ struct AllCampusView: View {
         }
     }
     
-    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                
-                
-                    
                 TextField("\(Image(systemName: "magnifyingglass")) 搜尋教室，例如：資001", text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
