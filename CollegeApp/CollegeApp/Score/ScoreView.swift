@@ -219,7 +219,7 @@ struct ScoreView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "doc.text.magnifyingglass")
-                    Text("期中")
+                    Text("本學期")
                         .font(.subheadline)
                 }
             }
