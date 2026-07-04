@@ -223,6 +223,7 @@ struct ScoreView: View {
                         .font(.subheadline)
                 }
             }
+            .disabled(isLoadingData)
         }
         
         ToolbarItem(placement: .navigationBarTrailing) {
@@ -245,6 +246,7 @@ struct ScoreView: View {
                     }
                 }
                 .frame(minWidth: 110)
+                .disabled(isLoadingData)
             }
         }
     }

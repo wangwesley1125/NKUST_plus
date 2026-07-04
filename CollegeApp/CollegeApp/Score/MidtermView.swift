@@ -154,6 +154,14 @@ struct MidtermView: View {
     let cookies: [HTTPCookie]
  
     @State private var tab = 0  // 0 = 期中，1 = 當學期
+    
+    // 防止快速接換使頁面 Error
+    @State private var isMidtermLoading = false
+    @State private var isSemesterLoading = false
+    
+    private var isAnyLoading: Bool {
+        isMidtermLoading || isSemesterLoading
+    }
  
     var body: some View {
         VStack(spacing: 0) {
@@ -165,6 +173,7 @@ struct MidtermView: View {
             .padding(.horizontal)
             .padding(.top, 8)
             .padding(.bottom, 4)
+            .disabled(isAnyLoading)
  
             if tab == 0 {
                 ScoreListView(
@@ -172,7 +181,8 @@ struct MidtermView: View {
                     endpoint: "https://stdsys.nkust.edu.tw/student/Score/MidTerm",
                     scoreLabels: ["期中成績"],
                     scoreColumnTitle: "期中",
-                    emptyText: "目前無期中成績"
+                    emptyText: "目前無期中成績",
+                    isLoading: $isMidtermLoading
                 )
                 .id("midterm")
             } else {
@@ -181,7 +191,8 @@ struct MidtermView: View {
                     endpoint: "https://stdsys.nkust.edu.tw/student/Score/PresentSemester",
                     scoreLabels: ["學期成績", "成績", "當學期成績", "期末成績"],
                     scoreColumnTitle: "學期",
-                    emptyText: "目前無當學期成績"
+                    emptyText: "目前無當學期成績",
+                    isLoading: $isSemesterLoading
                 )
                 .id("semester")
             }
@@ -199,9 +210,9 @@ struct ScoreListView: View {
     let scoreLabels: [String]     // 成績欄候選 data-label
     let scoreColumnTitle: String  // 表頭顯示文字，例如「期中」「學期」
     let emptyText: String         // 無資料時顯示的文字
- 
+    
+    @Binding var isLoading: Bool
     @State private var records: [ScoreRecord] = []
-    @State private var isLoading = true
     @State private var errorMessage: String?
  
     // 篩選
