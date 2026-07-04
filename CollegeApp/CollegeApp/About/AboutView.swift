@@ -29,7 +29,7 @@ struct AboutView: View {
                     HStack {
                         Text("版本資訊")
                         Spacer()
-                        Text("1.3.9")
+                        Text(appVersionString)
                     }
                     .foregroundColor(.teal)
                     
@@ -171,6 +171,11 @@ struct AboutView: View {
                 .navigationBarTitleDisplayMode(.inline)
         }
         
+    }
+    
+    // 動態讀取 Xcode General 設定的版本號
+    private var appVersionString: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "未知"
     }
     
     // 預設回報問題是開啟 Gmail，如果沒有 Gmail 則開起 Apple 內建的信箱
