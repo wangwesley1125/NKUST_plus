@@ -826,7 +826,9 @@ struct NKUSTWebView: UIViewRepresentable {
 struct AppUpdateChecker {
     static func check(retries: Int = 2) async -> String? {
         let bundleID = Bundle.main.bundleIdentifier ?? ""
-        guard let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleID)") else {
+        let countryCode = Locale.current.region?.identifier.lowercased() ?? "tw"   // 抓不到就 fallback 回台灣
+
+        guard let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleID)&country=\(countryCode)") else {
             return nil
         }
 
@@ -834,20 +836,20 @@ struct AppUpdateChecker {
             do {
                 var req = URLRequest(url: url)
                 req.timeoutInterval = 10
-                req.cachePolicy = .reloadIgnoringLocalCacheData   // 避免讀到剛上架前的舊快取
+                req.cachePolicy = .reloadIgnoringLocalCacheData
                 let (data, _) = try await URLSession.shared.data(for: req)
 
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let results = json["results"] as? [[String: Any]],
                       let storeVersion = results.first?["version"] as? String else {
-                    return nil   // 連得上但格式不對，重試也沒意義
+                    return nil
                 }
 
                 let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
                 return current.compare(storeVersion, options: .numeric) == .orderedAscending ? storeVersion : nil
             } catch {
                 if attempt < retries {
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)   // 失敗等 1.5 秒再試
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
                 }
             }
         }

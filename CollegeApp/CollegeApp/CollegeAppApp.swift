@@ -11,10 +11,16 @@ import SwiftUI
 struct CollegeAppApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var newAppVersion: String? = nil
+    
+    // 防止重複觸發
+    @State private var isCheckingVersion = false
 
     var body: some Scene {
         WindowGroup {
             LoginView()
+                .task {
+                    await checkForUpdate() // 冷啟動時也會執行
+                }
                 .alert("發現新版本 🎉", isPresented: Binding(
                     get: { newAppVersion != nil },
                     set: { if !$0 { newAppVersion = nil } }
@@ -36,8 +42,15 @@ struct CollegeAppApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                Task { newAppVersion = await AppUpdateChecker.check() }
+                Task { await checkForUpdate() }
             }
         }
+    }
+    
+    private func checkForUpdate() async {
+        guard !isCheckingVersion else { return }   // 避免 .task 跟 onChange 同時觸發打兩次 API
+        isCheckingVersion = true
+        newAppVersion = await AppUpdateChecker.check()
+        isCheckingVersion = false
     }
 }
