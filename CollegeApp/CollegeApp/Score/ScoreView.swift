@@ -8,296 +8,256 @@
 import SwiftUI
 import PDFKit
  
-// MARK: - Models
+// MARK: - Model（期中、當學期共用）
  
-struct CourseRecord: Identifiable {
+struct ScoreRecord: Identifiable {
     let id = UUID()
+    let year: String
+    let term: String
+    let courseCode: String
     let name: String
-    let type: String       // 必修 / 選修
+    let type: String      // 必修 / 選修
     let credits: Double
-    let score: Int
+    let score: String     // String，因為可能是「不開放」或數字
 }
  
-struct TranscriptData {
-    var semester: String = ""
-    var studentID: String = ""
-    var studentName: String = ""
-    var department: String = ""
-    var classInfo: String = ""
-    var courses: [CourseRecord] = []
-    var earnedCredits: Double = 0
-    var requiredCredits: Double = 0
-    var academicScore: Double = 0
-    var conductScore: Double = 0
-    var classRank: String = ""
-}
+// MARK: - HTML 解析器（標籤無關版）
  
-// MARK: - PDF 文字解析器
+struct ScoreParser {
  
-struct TranscriptParser {
+    /// - Parameter scoreLabels: 成績欄候選的 data-label，依序嘗試，挑第一個存在的。
+    ///   例如期中 ["期中成績"]，當學期 ["學期成績", "成績", "當學期成績", "期末成績"]。
+    static func parse(html: String, scoreLabels: [String]) -> [ScoreRecord] {
+        var records: [ScoreRecord] = []
  
-    static func parse(from document: PDFDocument) -> TranscriptData {
-        var fullText = ""
-        for i in 0..<document.pageCount {
-            fullText += (document.page(at: i)?.string ?? "") + "\n"
-        }
-        return parse(text: fullText)
-    }
+        let rowPattern = #"<tr[^>]*>([\s\S]*?)</tr>"#
+        guard let rowRegex = try? NSRegularExpression(pattern: rowPattern, options: .caseInsensitive) else { return [] }
  
-    static func parse(text: String) -> TranscriptData {
-        var data = TranscriptData()
-        let lines = text.components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
+        let matches = rowRegex.matches(in: html, range: NSRange(html.startIndex..., in: html))
  
-        for line in lines {
-            // 學期
-//            if line.contains("學年度") && line.contains("學期") {
-//                data.semester = line
-//                    .replacingOccurrences(of: "成績通知單", with: "")
-//                    .trimmingCharacters(in: .whitespaces)
-//            }
+        for match in matches {
+            guard let range = Range(match.range(at: 1), in: html) else { continue }
+            let rowContent = String(html[range])
  
-            // 科系
-            if line.contains("科系所：") {
-                if let range = line.range(of: "科系所：") {
-                    let after = line[range.upperBound...]
-                    // 取到下一個中文冒號前
-                    let dept = after.components(separatedBy: "班 級")[0]
-                    data.department = dept
-                        .replacingOccurrences(of: "班 級：", with: "")
-                        .trimmingCharacters(in: .whitespaces)
-                }
-                if let range = line.range(of: "班 級：") {
-                    data.classInfo = String(line[range.upperBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                }
-            }
+            // 把整列的 td 收成 [data-label: 純文字]
+            let cells = cellDictionary(from: rowContent)
  
-            // 學號 / 姓名
-            if line.contains("學 號：") {
-                let parts = line.components(separatedBy: "姓 名：")
-                if parts.count == 2 {
-                    data.studentID = parts[0]
-                        .replacingOccurrences(of: "學 號：", with: "")
-                        .trimmingCharacters(in: .whitespaces)
-                    data.studentName = parts[1].trimmingCharacters(in: .whitespaces)
-                }
-            }
+            let year    = cells["學年"] ?? ""
+            let term    = cells["學期"] ?? ""
+            let code    = cells["課號"] ?? ""
+            let name    = cells["課程名稱"] ?? ""
+            let type    = cells["修別"] ?? ""
+            let credStr = cells["學分"] ?? ""
  
-            // 科目行：名稱 必修/選修 學分 成績
-            if let course = parseCourse(from: line) {
-                data.courses.append(course)
-            }
+            // 成績欄 label 不確定 → 依候選清單挑第一個「存在」的（就算值是空字串也算）
+            let scoreKey = scoreLabels.first { cells.keys.contains($0) }
+            let scoreStr = scoreKey.flatMap { cells[$0] } ?? ""
  
-            // 摘要欄位
-            if line.contains("修習學分：") {
-                data.requiredCredits = extractDouble(after: "修習學分：", in: line) ?? 0
-            }
-            if line.contains("實得學分：") {
-                data.earnedCredits = extractDouble(after: "實得學分：", in: line) ?? 0
-            }
-            if line.contains("學業成績：") {
-                data.academicScore = extractDouble(after: "學業成績：", in: line) ?? 0
-            }
-            if line.contains("操行成績：") {
-                data.conductScore = extractDouble(after: "操行成績：", in: line) ?? 0
-            }
-            if line.contains("班 排 名：") || line.contains("班排名：") {
-                if let range = line.range(of: "：") {
-                    data.classRank = String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces)
-                }
-            }
+            guard !year.isEmpty, Int(year) != nil else { continue }
+            guard let credits = Double(credStr) else { continue }
+ 
+            records.append(ScoreRecord(
+                year: year, term: term, courseCode: code,
+                name: name, type: type, credits: credits, score: scoreStr
+            ))
         }
  
-        return data
+        return records
     }
  
-    // MARK: 解析單一科目行
-    // 格式：<課程名稱> <必修|選修> <學分> <成績>
-    private static func parseCourse(from line: String) -> CourseRecord? {
-        let pattern = #"^(.+?)\s+(必修|選修)\s+(\d+\.?\d*)\s+(\d{1,3})$"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
-              match.numberOfRanges == 5 else { return nil }
+    /// 把一個 <tr> 內所有 <td data-label="X">value</td> 收成字典
+    private static func cellDictionary(from rowHTML: String) -> [String: String] {
+        var dict: [String: String] = [:]
+        let pattern = #"data-label=["']([^"']+)["'][^>]*>([\s\S]*?)</td>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return dict }
  
-        func capture(_ i: Int) -> String? {
-            guard let r = Range(match.range(at: i), in: line) else { return nil }
-            return String(line[r])
+        let matches = regex.matches(in: rowHTML, range: NSRange(rowHTML.startIndex..., in: rowHTML))
+        for m in matches {
+            guard let lr = Range(m.range(at: 1), in: rowHTML),
+                  let vr = Range(m.range(at: 2), in: rowHTML) else { continue }
+            let label = String(rowHTML[lr])
+            let value = stripTags(from: String(rowHTML[vr]))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            dict[label] = value
+        }
+        return dict
+    }
+ 
+    // 去掉標籤 + 解碼 HTML entity
+    private static func stripTags(from html: String) -> String {
+        let tagPattern = #"<[^>]+>"#
+        let stripped = (try? NSRegularExpression(pattern: tagPattern))
+            .map { $0.stringByReplacingMatches(in: html, range: NSRange(html.startIndex..., in: html), withTemplate: "") }
+            ?? html
+        return decodeEntities(stripped)
+    }
+ 
+    /// 解碼 HTML entity：先處理數字實體（&#xHHHH; / &#DDDD;，學校的中文都是這種），再處理具名實體。
+    private static func decodeEntities(_ input: String) -> String {
+        // 1) 數字實體（十六進位、十進位）
+        var result = input
+        let pattern = #"&#(x[0-9A-Fa-f]+|[0-9]+);"#
+        if let regex = try? NSRegularExpression(pattern: pattern) {
+            let ns = result as NSString
+            let matches = regex.matches(in: result, range: NSRange(location: 0, length: ns.length))
+            if !matches.isEmpty {
+                var rebuilt = ""
+                var lastEnd = 0
+                for m in matches {
+                    rebuilt += ns.substring(with: NSRange(location: lastEnd, length: m.range.location - lastEnd))
+                    let token = ns.substring(with: m.range(at: 1))
+                    let value: UInt32? = (token.first == "x" || token.first == "X")
+                        ? UInt32(token.dropFirst(), radix: 16)
+                        : UInt32(token, radix: 10)
+                    if let v = value, let scalar = Unicode.Scalar(v) {
+                        rebuilt += String(scalar)
+                    } else {
+                        rebuilt += ns.substring(with: m.range)   // 解不出來就保留原文
+                    }
+                    lastEnd = m.range.location + m.range.length
+                }
+                rebuilt += ns.substring(from: lastEnd)
+                result = rebuilt
+            }
         }
  
-        guard let name    = capture(1),
-              let type    = capture(2),
-              let credStr = capture(3),
-              let scoreStr = capture(4),
-              let credits = Double(credStr),
-              let score   = Int(scoreStr) else { return nil }
- 
-        return CourseRecord(name: name, type: type, credits: credits, score: score)
-    }
- 
-    private static func extractDouble(after prefix: String, in line: String) -> Double? {
-        guard let range = line.range(of: prefix) else { return nil }
-        let rest = line[range.upperBound...].trimmingCharacters(in: .whitespaces)
-        // 取第一個數字片段
-        let numStr = rest.components(separatedBy: .whitespaces).first ?? rest
-        return Double(numStr)
+        // 2) 具名實體（&amp; 放最後，避免二次解碼）
+        return result
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "&lt;",   with: "<")
+            .replacingOccurrences(of: "&gt;",   with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&apos;", with: "'")
+            .replacingOccurrences(of: "&amp;",  with: "&")
     }
 }
  
 // MARK: - 成績顏色輔助
  
-private extension Int {
+private extension String {
     var scoreColor: Color {
-        switch self {
-        case 90...100: return .green
-        case 80..<90:  return .blue
-        case 70..<80:  return .primary
-        case 60..<70:  return .orange
-        default:       return .red
+        if let score = Int(self) {
+            switch score {
+            case 90...100: return .green
+            case 80..<90:  return .blue
+            case 70..<80:  return .primary
+            case 60..<70:  return .orange
+            default:       return .red
+            }
         }
+        return .secondary  // 「不開放」等非數字
     }
 }
  
 // MARK: - 主畫面
+// 最上方：學生資訊卡（姓名 / 學號 / 科系 / 班級）
+// 下方：期中 / 當學期 切換 tabbar
+// 左上角按鈕「歷年成績」，導向 PDF 成績單頁面 (TranscriptHistoryView)
  
 struct ScoreView: View {
     let cookies: [HTTPCookie]
  
-    @State private var semesters: [Semester] = []
-    @State private var selectedYM = ""
-    @State private var verificationToken = ""
-    @State private var transcriptData: TranscriptData?
-    @State private var isLoadingSemesters = true
-    @State private var isLoadingData = false
-    @State private var errorMessage: String?
+    @State private var tab = 0  // 0 = 期中，1 = 當學期
  
-    // 篩選狀態
-    @State private var filterType: String = "全部"   // 全部 / 必修 / 選修
-    @State private var sortByScore = false
+    // 防止快速切換分頁時互相干擾
+    @State private var isMidtermLoading = false
+    @State private var isSemesterLoading = false
  
-    private var filteredCourses: [CourseRecord] {
-        guard let data = transcriptData else { return [] }
-        var list = data.courses
-        if filterType != "全部" {
-            list = list.filter { $0.type == filterType }
-        }
-        return sortByScore ? list.sorted { $0.score > $1.score } : list
+    // 學生基本資料（取最新一學期的成績單來取得姓名等資訊）
+    @State private var studentInfo: TranscriptData?
+    @State private var isLoadingStudentInfo = true
+ 
+    private var isAnyLoading: Bool {
+        isMidtermLoading || isSemesterLoading
     }
  
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoadingSemesters {
-                    loadingView("載入學期中…")
-                } else if isLoadingData {
-                    loadingView("取得成績中…")
-                } else if let error = errorMessage {
-                    errorView(error)
-                } else if let data = transcriptData {
-                    mainContent(data)
+            VStack(spacing: 0) {
+                studentInfoSection
+ 
+                Picker("成績類別", selection: $tab) {
+                    Text("期中成績").tag(0)
+                    Text("當學期").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+                .disabled(isAnyLoading)
+ 
+                if tab == 0 {
+                    ScoreListView(
+                        cookies: cookies,
+                        endpoint: "https://stdsys.nkust.edu.tw/student/Score/MidTerm",
+                        scoreLabels: ["期中成績"],
+                        scoreColumnTitle: "期中",
+                        emptyText: "目前無期中成績",
+                        isLoading: $isMidtermLoading
+                    )
+                    .id("midterm")
                 } else {
-                    Text("請選擇學期")
-                        .foregroundStyle(.secondary)
+                    ScoreListView(
+                        cookies: cookies,
+                        endpoint: "https://stdsys.nkust.edu.tw/student/Score/PresentSemester",
+                        scoreLabels: ["學期成績", "成績", "當學期成績", "期末成績"],
+                        scoreColumnTitle: "學期",
+                        emptyText: "目前無當學期成績",
+                        isLoading: $isSemesterLoading
+                    )
+                    .id("semester")
                 }
             }
             .navigationTitle("我的成績")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { semesterPicker }
-            .task { await fetchSemestersAndToken() }
+            .toolbar { historyLink }
+            .task { await fetchStudentInfo() }
         }
     }
  
-    // MARK: - 學期選擇工具列
+    // MARK: - 歷年成績連結（原本的「本學期」按鈕，改為導向歷年成績）
  
     @ToolbarContentBuilder
-    private var semesterPicker: some ToolbarContent {
-        
+    private var historyLink: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
             NavigationLink {
-                MidtermView(cookies: cookies)
+                TranscriptHistoryView(cookies: cookies)
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                    Text("本學期")
+                    Image(systemName: "clock.arrow.circlepath")
+                    Text("歷年成績")
                         .font(.subheadline)
                 }
             }
-            .disabled(isLoadingData)
+            .disabled(isAnyLoading)
         }
-        
-        ToolbarItem(placement: .navigationBarTrailing) {
-            if !isLoadingSemesters && !semesters.isEmpty {
-                Menu {
-                    ForEach(semesters) { sem in
-                        Button(sem.displayName) {
-                            selectedYM = sem.ym
-                            Task { await fetchPDF() }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(semesters.first(where: { $0.ym == selectedYM })?.displayName ?? "選擇學期")
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(minWidth: 110)
-                .disabled(isLoadingData)
-            }
-        }
-    }
- 
-    // MARK: - 主要內容
- 
-    @ViewBuilder
-    private func mainContent(_ data: TranscriptData) -> some View {
-        List {
-            // 學生資訊卡
-            Section {
-                studentInfoCard(data)
-            }
-            .listRowInsets(.init())
-            .listRowBackground(Color.clear)
- 
-            // 成績摘要卡
-            Section {
-                summaryCard(data)
-            }
-            .listRowInsets(.init())
-            .listRowBackground(Color.clear)
- 
-            // 篩選列
-            Section {
-                filterBar
-            }
-            .listRowInsets(.init(top: 0, leading: 16, bottom: 0, trailing: 16))
-            .listRowBackground(Color.clear)
- 
-            // 科目列表
-            Section {
-                ForEach(filteredCourses) { course in
-                    courseRow(course)
-                }
-            } header: {
-                HStack {
-                    Text("科目").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("修別").frame(width: 40)
-                    Text("學分").frame(width: 40)
-                    Text("成績").frame(width: 44)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-            }
-        }
-        .listStyle(.insetGrouped)
     }
  
     // MARK: - 學生資訊卡
+ 
+    @ViewBuilder
+    private var studentInfoSection: some View {
+        if let data = studentInfo {
+            studentInfoCard(data)
+        } else if isLoadingStudentInfo {
+            studentInfoLoadingCard
+        }
+    }
+ 
+    private var studentInfoLoadingCard: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+            Text("載入學生資料…")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
  
     private func studentInfoCard(_ data: TranscriptData) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -322,10 +282,6 @@ struct ScoreView: View {
                 Spacer()
                 infoChip(icon: "person.3", text: data.classInfo)
             }
- 
-            Text(data.semester)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground))
@@ -334,22 +290,200 @@ struct ScoreView: View {
         .padding(.top, 8)
     }
  
-    // MARK: - 成績摘要卡
+    private func infoChip(icon: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
  
-    private func summaryCard(_ data: TranscriptData) -> some View {
+    // MARK: - 取得學生基本資料
+    // 抓「學期清單 + Token」後，只取最新一學期的成績單 PDF 來解析姓名 / 學號 / 科系 / 班級。
+ 
+    private func fetchStudentInfo() async {
+        await MainActor.run { isLoadingStudentInfo = true }
+ 
+        guard let url = URL(string: "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript") else {
+            await MainActor.run { isLoadingStudentInfo = false }
+            return
+        }
+ 
+        var request = URLRequest(url: url)
+        HTTPCookie.requestHeaderFields(with: cookies).forEach {
+            request.setValue($1, forHTTPHeaderField: $0)
+        }
+ 
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            let html = String(data: data, encoding: .utf8) ?? ""
+ 
+            // 解析學期（從 JS 字串中取出），取最新一筆
+            let jsPattern = #""(\d{3}-\d)""#
+            var yms: [String] = []
+            if let regex = try? NSRegularExpression(pattern: jsPattern) {
+                let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
+                let ymSet = matches.compactMap { match -> String? in
+                    guard let r = Range(match.range(at: 1), in: html) else { return nil }
+                    return String(html[r])
+                }
+                yms = Array(Set(ymSet)).sorted().reversed()
+            }
+ 
+            guard let latestYM = yms.first else {
+                await MainActor.run { isLoadingStudentInfo = false }
+                return
+            }
+ 
+            // 解析 Token
+            var token = ""
+            let inputPattern = #"name="__RequestVerificationToken"[^>]*value="([^"]+)""#
+            if let regex = try? NSRegularExpression(pattern: inputPattern),
+               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+               let r = Range(match.range(at: 1), in: html) {
+                token = String(html[r])
+            }
+ 
+            let ymForAPI = latestYM.replacingOccurrences(of: "-", with: "")
+            var components = URLComponents(string: "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript/PrintTranscript")!
+            components.queryItems = [
+                URLQueryItem(name: "YM", value: ymForAPI),
+                URLQueryItem(name: "ShowRank", value: "true"),
+                URLQueryItem(name: "__RequestVerificationToken", value: token),
+                URLQueryItem(name: "ShowRank", value: "false")
+            ]
+ 
+            guard let pdfURL = components.url else {
+                await MainActor.run { isLoadingStudentInfo = false }
+                return
+            }
+ 
+            var pdfRequest = URLRequest(url: pdfURL)
+            HTTPCookie.requestHeaderFields(with: cookies).forEach {
+                pdfRequest.setValue($1, forHTTPHeaderField: $0)
+            }
+            pdfRequest.setValue(
+                "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript",
+                forHTTPHeaderField: "Referer"
+            )
+ 
+            let (pdfData, _) = try await URLSession.shared.data(for: pdfRequest)
+ 
+            await MainActor.run {
+                if let doc = PDFDocument(data: pdfData) {
+                    studentInfo = TranscriptParser.parse(from: doc)
+                }
+                isLoadingStudentInfo = false
+            }
+        } catch {
+            await MainActor.run { isLoadingStudentInfo = false }
+        }
+    }
+}
+ 
+// MARK: - 共用列表（期中 / 當學期都用這個）
+ 
+struct ScoreListView: View {
+    let cookies: [HTTPCookie]
+    let endpoint: String          // 要抓的網址
+    let scoreLabels: [String]     // 成績欄候選 data-label
+    let scoreColumnTitle: String  // 表頭顯示文字，例如「期中」「學期」
+    let emptyText: String         // 無資料時顯示的文字
+ 
+    @Binding var isLoading: Bool
+    @State private var records: [ScoreRecord] = []
+    @State private var errorMessage: String?
+ 
+    // 篩選
+    @State private var filterType: String = "全部"
+    @State private var sortByScore = false
+ 
+    private var filteredRecords: [ScoreRecord] {
+        var list = records
+        if filterType != "全部" {
+            list = list.filter { $0.type == filterType }
+        }
+        if sortByScore {
+            list = list.sorted {
+                let a = Int($0.score) ?? -1
+                let b = Int($1.score) ?? -1
+                return a > b
+            }
+        }
+        return list
+    }
+ 
+    private var totalCredits: Double {
+        filteredRecords.reduce(0) { $0 + $1.credits }
+    }
+ 
+    var body: some View {
+        Group {
+            if isLoading {
+                loadingView
+            } else if let error = errorMessage {
+                errorView(error)
+            } else if records.isEmpty {
+                emptyView
+            } else {
+                mainContent
+            }
+        }
+        .task { await fetch() }
+    }
+ 
+    // MARK: - 主要內容
+ 
+    private var mainContent: some View {
+        List {
+            Section {
+                summaryCard
+            }
+            .listRowInsets(.init())
+            .listRowBackground(Color.clear)
+ 
+            Section {
+                filterBar
+            }
+            .listRowInsets(.init(top: 0, leading: 16, bottom: 0, trailing: 16))
+            .listRowBackground(Color.clear)
+ 
+            Section {
+                ForEach(filteredRecords) { record in
+                    recordRow(record)
+                }
+            } header: {
+                HStack {
+                    Text("課程名稱").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("修別").frame(width: 40)
+                    Text("學分").frame(width: 40)
+                    Text(scoreColumnTitle).frame(width: 50)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+ 
+    // MARK: - 摘要卡（不含平均成績）
+ 
+    private var summaryCard: some View {
         HStack(spacing: 0) {
-            summaryItem(title: "學業成績", value: String(format: "%.2f", data.academicScore), color: .blue)
+            summaryItem(title: "科目數", value: "\(filteredRecords.count)", color: .teal)
             Divider().frame(height: 44)
-            summaryItem(title: "操行成績", value: String(format: "%.2f", data.conductScore), color: .purple)
-            Divider().frame(height: 44)
-            summaryItem(title: "實得學分", value: String(format: "%.0f", data.earnedCredits), color: .green)
-            Divider().frame(height: 44)
-            summaryItem(title: "班級排名", value: data.classRank, color: .orange)
+            summaryItem(title: "總學分", value: String(format: "%.1f", totalCredits), color: .blue)
         }
         .padding(.vertical, 14)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
  
     private func summaryItem(title: String, value: String, color: Color) -> some View {
@@ -379,7 +513,7 @@ struct ScoreView: View {
                         .foregroundStyle(filterType == type ? .white : .primary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 7)
-                        .background(filterType == type ? Color(Color.teal) : Color(.systemGray5))
+                        .background(filterType == type ? Color.teal : Color(.systemGray5))
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -392,67 +526,71 @@ struct ScoreView: View {
             } label: {
                 Label(sortByScore ? "成績" : "依序", systemImage: "arrow.up.arrow.down")
                     .font(.subheadline)
-                    .foregroundStyle(sortByScore ? Color(Color.teal) : .secondary)
+                    .foregroundStyle(sortByScore ? Color.teal : .secondary)
             }
         }
         .padding(.vertical, 6)
     }
  
-    // MARK: - 科目列
+    // MARK: - 課程列
  
-    private func courseRow(_ course: CourseRecord) -> some View {
+    private func recordRow(_ record: ScoreRecord) -> some View {
         HStack(spacing: 8) {
-            // 科目名稱
-            Text(course.name)
-                .font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(record.name)
+                    .font(.subheadline)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                Text(record.courseCode)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
  
-            // 修別標籤
-            Text(course.type)
+            Text(record.type)
                 .font(.caption2.weight(.medium))
-                .foregroundStyle(course.type == "必修" ? Color.blue : Color.purple)
+                .foregroundStyle(record.type == "必修" ? Color.blue : Color.purple)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
-                .background((course.type == "必修" ? Color.blue : Color.purple).opacity(0.1))
+                .background((record.type == "必修" ? Color.blue : Color.purple).opacity(0.1))
                 .clipShape(Capsule())
                 .frame(width: 46)
  
-            // 學分
-            Text(String(format: "%.1f", course.credits))
+            Text(String(format: "%.1f", record.credits))
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 36)
  
-            // 成績
-            Text("\(course.score)")
+            Text(record.score.isEmpty ? "—" : record.score)
                 .font(.subheadline.monospacedDigit().weight(.semibold))
-                .foregroundStyle(course.score.scoreColor)
-                .frame(width: 44)
+                .foregroundStyle(record.score.scoreColor)
+                .frame(width: 50)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
  
     // MARK: - 輔助 Views
-    private func infoChip(icon: String, text: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(text)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-    }
  
-    private func loadingView(_ message: String) -> some View {
+    private var loadingView: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text(message).foregroundStyle(.secondary)
+            Text("載入中…").foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+ 
+    private var emptyView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "tray")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text(emptyText)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
  
     private func errorView(_ message: String) -> some View {
@@ -464,7 +602,7 @@ struct ScoreView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("重試") {
-                Task { await fetchSemestersAndToken() }
+                Task { await fetch() }
             }
             .buttonStyle(.bordered)
         }
@@ -473,13 +611,14 @@ struct ScoreView: View {
     }
  
     // MARK: - 網路請求
-    func fetchSemestersAndToken() async {
+ 
+    func fetch() async {
         await MainActor.run {
-            isLoadingSemesters = true
+            isLoading = true
             errorMessage = nil
         }
  
-        guard let url = URL(string: "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript") else { return }
+        guard let url = URL(string: endpoint) else { return }
  
         var request = URLRequest(url: url)
         HTTPCookie.requestHeaderFields(with: cookies).forEach {
@@ -489,104 +628,19 @@ struct ScoreView: View {
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
             let html = String(data: data, encoding: .utf8) ?? ""
- 
-            // 解析學期（從 JS 字串中取出）
-            let jsPattern = #""(\d{3}-\d)""#
-            var parsedSemesters: [Semester] = []
-            if let regex = try? NSRegularExpression(pattern: jsPattern) {
-                let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
-                let ymSet = matches.compactMap { match -> String? in
-                    guard let r = Range(match.range(at: 1), in: html) else { return nil }
-                    return String(html[r])
-                }
-                parsedSemesters = Array(Set(ymSet)).sorted().reversed()
-                    .map { Semester(ym: $0, displayName: $0) }
-            }
- 
-            // 解析 Token
-            var token = ""
-            let inputPattern = #"name="__RequestVerificationToken"[^>]*value="([^"]+)""#
-            if let regex = try? NSRegularExpression(pattern: inputPattern),
-               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-               let r = Range(match.range(at: 1), in: html) {
-                token = String(html[r])
-            }
+            let parsed = ScoreParser.parse(html: html, scoreLabels: scoreLabels)
  
             await MainActor.run {
-                semesters = parsedSemesters
-                selectedYM = parsedSemesters.first?.ym ?? ""
-                verificationToken = token
-                isLoadingSemesters = false
-            }
- 
-            if !parsedSemesters.isEmpty {
-                await fetchPDF()
-            }
- 
-        } catch {
-            await MainActor.run {
-                errorMessage = "無法載入頁面：\(error.localizedDescription)"
-                isLoadingSemesters = false
-            }
-        }
-    }
- 
-    func fetchPDF() async {
-        guard !selectedYM.isEmpty else { return }
- 
-        await MainActor.run {
-            isLoadingData = true
-            errorMessage = nil
-            transcriptData = nil
-        }
- 
-        let ymForAPI = selectedYM.replacingOccurrences(of: "-", with: "")
-        var components = URLComponents(string: "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript/PrintTranscript")!
-        components.queryItems = [
-            URLQueryItem(name: "YM", value: ymForAPI),
-            URLQueryItem(name: "ShowRank", value: "true"),
-            URLQueryItem(name: "__RequestVerificationToken", value: verificationToken),
-            URLQueryItem(name: "ShowRank", value: "false")
-        ]
- 
-        guard let url = components.url else { return }
- 
-        var request = URLRequest(url: url)
-        HTTPCookie.requestHeaderFields(with: cookies).forEach {
-            request.setValue($1, forHTTPHeaderField: $0)
-        }
-        request.setValue(
-            "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript",
-            forHTTPHeaderField: "Referer"
-        )
- 
-        do {
-            let (data, _) = try await URLSession.shared.data(for: request)
- 
-            await MainActor.run {
-                if let doc = PDFDocument(data: data) {
-                    // 解析 PDF 文字，不顯示原始 PDF
-                    transcriptData = TranscriptParser.parse(from: doc)
-                } else {
-                    errorMessage = "無法取得成績單，請重試"
-                }
-                isLoadingData = false
+                records = parsed
+                isLoading = false
             }
         } catch {
             await MainActor.run {
                 errorMessage = "網路錯誤：\(error.localizedDescription)"
-                isLoadingData = false
+                isLoading = false
             }
         }
     }
-}
- 
-// MARK: - Model
- 
-struct Semester: Identifiable {
-    let id = UUID()
-    let ym: String
-    let displayName: String
 }
  
 #Preview {
