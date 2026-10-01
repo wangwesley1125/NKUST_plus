@@ -342,6 +342,48 @@ struct AutoFillBanner: View {
     }
 }
 
+// MARK: - 連線錯誤卡片
+// 登入頁載入失敗或登入逾時時顯示，提供重新連線按鈕。
+
+struct ConnectionErrorCard: View {
+    let message: String
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 40))
+                .foregroundStyle(.orange)
+
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center)
+
+            Text("請確認網路狀態後再試一次")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                onRetry()
+            } label: {
+                Label("重新連線", systemImage: "arrow.clockwise")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(28)
+        .frame(maxWidth: 300)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+        .transition(.scale(scale: 0.9).combined(with: .opacity))
+    }
+}
+
 // MARK: - 儲存密碼 Sheet
 // 登入成功後詢問是否將帳密存入 Keychain。
 // isUpdate = true 時表示 Keychain 已有舊帳密，改為更新提示。
@@ -443,6 +485,9 @@ struct LoginView: View {
     // 刷新頁面
     @State private var shouldReload = false
 
+    // 連線錯誤訊息（nil = 沒有錯誤）
+    @State private var loadError: String? = nil
+
     var body: some View {
         
         Group {
@@ -472,6 +517,7 @@ struct LoginView: View {
                         showAutoFillBanner: $showAutoFillBanner,
                         shouldAutoFill: $shouldAutoFill,
                         shouldReload: $shouldReload,
+                        loadError: $loadError,
                         savedCredentials: savedCredentials,
                         onDetectedCredentials: { username, password in
                             // 登入成功後，判斷是否需要新增或更新儲存的帳密
@@ -480,7 +526,6 @@ struct LoginView: View {
                             let isChanged  = existing?.username != username || existing?.password != password
                             if isNew || isChanged {
                                 pendingCredentials = (username, password)
-                                //showSavePasswordSheet = true
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                                     showSavePasswordSheet = true
                                 }
@@ -534,7 +579,7 @@ struct LoginView: View {
                 }
                 // AutoFill Banner（底部）
                 .overlay(alignment: .bottom) {
-                    if showAutoFillBanner, let cred = savedCredentials {
+                    if showAutoFillBanner, loadError == nil, let cred = savedCredentials {
                         AutoFillBanner(
                             username: cred.username,
                             onFill: {
@@ -552,6 +597,15 @@ struct LoginView: View {
                         .padding(.bottom, 20)
                     }
                 }
+                // 連線錯誤卡片（置中）
+                .overlay {
+                    if let loadError {
+                        ConnectionErrorCard(message: loadError) {
+                            shouldReload = true
+                        }
+                    }
+                }
+                .animation(.spring(response: 0.3), value: loadError)
             }
         }
         // Sheet 掛在 Group 外：isLoggedIn 翻轉後 Sheet 仍可持續顯示
@@ -614,10 +668,17 @@ struct NKUSTWebView: UIViewRepresentable {
     @Binding var shouldAutoFill: Bool
     /// 刷新頁面
     @Binding var shouldReload: Bool
+    /// 連線錯誤訊息（nil = 沒有錯誤）
+    @Binding var loadError: String?
 
     var savedCredentials: (username: String, password: String)?
     /// 登入成功前從表單擷取的帳密，回傳給 LoginView 決定是否儲存
     var onDetectedCredentials: ((String, String) -> Void)?
+
+    /// 登入頁網址
+    static let loginURL = URL(string: "https://stdsys.nkust.edu.tw/student/Account/Login")!
+    /// 單次載入逾時秒數
+    static let timeout: TimeInterval = 20
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -626,8 +687,7 @@ struct NKUSTWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.navigationDelegate = context.coordinator
-        let url = URL(string: "https://stdsys.nkust.edu.tw/student/Account/Login")!
-        webView.load(URLRequest(url: url))
+        webView.load(URLRequest(url: Self.loginURL, timeoutInterval: Self.timeout))
         return webView
     }
 
@@ -646,9 +706,15 @@ struct NKUSTWebView: UIViewRepresentable {
         
         // 刷新頁面
         if shouldReload {
-            webView.reload()
+            // 第一次就載入失敗時 webView.url 是 nil，reload() 沒有作用，要重新 load
+            if webView.url == nil || loadError != nil {
+                webView.load(URLRequest(url: Self.loginURL, timeoutInterval: Self.timeout))
+            } else {
+                webView.reload()
+            }
             DispatchQueue.main.async {
                 self.shouldReload = false
+                self.loadError = nil
             }
         }
     }
@@ -658,6 +724,8 @@ struct NKUSTWebView: UIViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate {
         var parent: NKUSTWebView
         var overlayView: UIView?
+        /// 是否已完成登入處理（避免重複觸發）
+        private var didHandleLogin = false
 
         init(_ parent: NKUSTWebView) {
             self.parent = parent
@@ -752,13 +820,31 @@ struct NKUSTWebView: UIViewRepresentable {
             decisionHandler(.allow)
         }
 
-        // MARK: 頁面載入完成
+        // MARK: 主頁面開始收到資料（不必等 CSS / JS 全部載完）
+        // 網路差時 /student 首頁的十幾個 JS、CSS 可能載很久，
+        // 但登入 Cookie 在伺服器回應時就已經寫入，所以在這裡就切換到主畫面。
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            guard let urlString = webView.url?.absoluteString,
+                  urlString.contains("/student"),
+                  !urlString.contains("Login"),
+                  !didHandleLogin
+            else { return }
+
+            didHandleLogin = true
+            finishLogin()
+        }
+
+        // MARK: 頁面載入完成（只處理登入頁的 AutoFill Banner）
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard let urlString = webView.url?.absoluteString else { return }
             print("目前 URL：\(urlString)")
 
             // 登入頁載入完成：若有儲存帳密，顯示 AutoFill Banner
             if urlString.contains("Login") {
+                didHandleLogin = false
+                DispatchQueue.main.async {
+                    self.parent.loadError = nil
+                }
                 if parent.savedCredentials != nil {
                     DispatchQueue.main.async {
                         withAnimation(.spring(response: 0.4)) {
@@ -766,36 +852,69 @@ struct NKUSTWebView: UIViewRepresentable {
                         }
                     }
                 }
-                return
+            }
+        }
+
+        // MARK: 載入失敗（還沒開始收到資料就失敗：連不上、逾時、DNS 等）
+        func webView(_ webView: WKWebView,
+                     didFailProvisionalNavigation navigation: WKNavigation!,
+                     withError error: Error) {
+            handleLoadError(error)
+        }
+
+        // MARK: 載入失敗（收到部分資料後才失敗）
+        func webView(_ webView: WKWebView,
+                     didFail navigation: WKNavigation!,
+                     withError error: Error) {
+            handleLoadError(error)
+        }
+
+        private func handleLoadError(_ error: Error) {
+            let nsError = error as NSError
+            print("WebView 載入失敗：\(nsError.domain) \(nsError.code) \(nsError.localizedDescription)")
+
+            // 已經登入成功就不用管（例如首頁某個 JS 載不到）
+            if didHandleLogin { return }
+            // 導航被新的導航取代（不是真的錯誤）
+            if nsError.code == NSURLErrorCancelled { return }
+            // WebKit 的「Frame load interrupted」（也不是真的錯誤）
+            if nsError.domain == "WebKitErrorDomain" && nsError.code == 102 { return }
+
+            let message: String
+            switch nsError.code {
+            case NSURLErrorNotConnectedToInternet,
+                 NSURLErrorNetworkConnectionLost,
+                 NSURLErrorDataNotAllowed:
+                message = "目前沒有網路連線"
+            case NSURLErrorTimedOut:
+                message = "連線逾時，學校系統可能較忙碌"
+            case NSURLErrorCannotFindHost,
+                 NSURLErrorCannotConnectToHost,
+                 NSURLErrorDNSLookupFailed:
+                message = "無法連線到學校系統"
+            default:
+                message = "載入失敗，請稍後再試"
             }
 
-            // 登入成功後頁面：儲存 Cookie 並切換到主畫面
-            if urlString.contains("/student") && !urlString.contains("Login") {
-                WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
-                    DispatchQueue.main.async {
-                        self.parent.cookies = cookies
-                        self.parent.isLoggedIn = true
-                        CookieStorage.save(cookies)
-                    }
-                    
-                    // 登入成功後背景更新課表 Widget
-                    Task {
-                        do {
-                            let html = try await CourseService.shared.fetchCourses(cookies: cookies)
-                            let parsed = try CourseParser.parse(html: html)
-                            let codable = parsed.map {
-                                CourseCodable(name: $0.name, teacher: $0.teacher,
-                                              room: $0.room, period: $0.period, weekday: $0.weekday)
-                            }
-                            CourseStorage.shared.save(courses: codable)
-                            WidgetCenter.shared.reloadAllTimelines()
-                            print("登入後已更新 Widget，共 \(codable.count) 堂課")
-                        } catch {
-                            print("登入後更新課表失敗：\(error)")
-                        }
-                    }
+            DispatchQueue.main.async {
+                self.removeOverlay()
+                self.parent.isTransitioning = false
+                self.parent.showAutoFillBanner = false
+                self.parent.loadError = message
+            }
+        }
+
+        // MARK: 取得 Cookie 並切換到主畫面
+        private func finishLogin() {
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                DispatchQueue.main.async {
+                    self.parent.cookies = cookies
+                    self.parent.isLoggedIn = true
+                    CookieStorage.save(cookies)
                 }
             }
+            // Widget 的課表更新已移到 MainView.loadAll()，
+            // 避免登入當下課表被重複抓兩次、在網路差時互搶頻寬。
         }
 
         // MARK: 螢幕遮罩（登入過渡動畫）
@@ -818,6 +937,19 @@ struct NKUSTWebView: UIViewRepresentable {
 
             webView.addSubview(overlay)
             overlayView = overlay
+
+            // 保險：超過時間還沒完成登入，就收起遮罩並顯示錯誤，避免一直卡在 icon
+            DispatchQueue.main.asyncAfter(deadline: .now() + NKUSTWebView.timeout) { [weak self] in
+                guard let self, !self.didHandleLogin, self.overlayView != nil else { return }
+                self.removeOverlay()
+                self.parent.isTransitioning = false
+                self.parent.loadError = "連線逾時，請檢查網路後重試"
+            }
+        }
+
+        private func removeOverlay() {
+            overlayView?.removeFromSuperview()
+            overlayView = nil
         }
     }
 }

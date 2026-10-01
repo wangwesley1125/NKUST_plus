@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import StoreKit
+import WidgetKit
 
 // MARK: - 課程狀態
 enum CourseStatus {
@@ -70,112 +71,6 @@ private func remainingMinutes(for period: String) -> Int? {
     return remaining > 0 ? Int(remaining / 60) : 0
 }
 
-// MARK: - 天氣資料模型
-struct KaohsiungWeather {
-    let temperature: Double
-    let weatherCode: Int
-    let windSpeed: Double
-
-    var sfSymbol: String {
-        switch weatherCode {
-        case 0:            return "sun.max.fill"
-        case 1, 2:         return "cloud.sun.fill"
-        case 3:            return "cloud.fill"
-        case 45, 48:       return "cloud.fog.fill"
-        case 51, 53, 55:   return "cloud.drizzle.fill"
-        case 61, 63, 65:   return "cloud.rain.fill"
-        case 71, 73, 75:   return "cloud.snow.fill"
-        case 80, 81, 82:   return "cloud.heavyrain.fill"
-        case 95, 96, 99:   return "cloud.bolt.rain.fill"
-        default:           return "cloud.fill"
-        }
-    }
-
-    var description: String {
-        switch weatherCode {
-        case 0:            return "晴天"
-        case 1, 2:         return "多雲時晴"
-        case 3:            return "多雲"
-        case 45, 48:       return "霧"
-        case 51, 53, 55:   return "毛毛雨"
-        case 61, 63, 65:   return "雨"
-        case 71, 73, 75:   return "雪"
-        case 80, 81, 82:   return "大雨"
-        case 95, 96, 99:   return "雷陣雨"
-        default:           return "未知"
-        }
-    }
-}
-
-// MARK: - 天氣卡片（高雄）
-private struct WeatherCard: View {
-    @State private var weather: KaohsiungWeather?
-    @State private var isFetching = true
-
-    var body: some View {
-        HStack(spacing: 16) {
-            if isFetching {
-                ProgressView()
-                    .frame(maxWidth: .infinity, minHeight: 60)
-            } else if let w = weather {
-                Image(systemName: w.sfSymbol)
-                    .font(.system(size: 38))
-                    .symbolRenderingMode(.multicolor)
-                    .frame(width: 48)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("高雄市")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(w.description)
-                        .font(.subheadline).bold()
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(w.temperature))°C")
-                        .font(.title).bold()
-                    Label(String(format: "%.1f km/h", w.windSpeed), systemImage: "wind")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            } else {
-                Label("無法取得天氣資訊", systemImage: "exclamationmark.triangle")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6).opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.07), radius: 6, x: 0, y: 2)
-        .task { await fetchWeather() }
-    }
-
-    func fetchWeather() async {
-        let urlStr = "https://api.open-meteo.com/v1/forecast"
-            + "?latitude=22.6273&longitude=120.3014"
-            + "&current=temperature_2m,weather_code,wind_speed_10m"
-            + "&timezone=Asia%2FTaipei"
-        guard let url = URL(string: urlStr) else { isFetching = false; return }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let json    = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let current = json["current"] as? [String: Any],
-               let temp    = current["temperature_2m"] as? Double,
-               let code    = current["weather_code"] as? Int,
-               let wind    = current["wind_speed_10m"] as? Double {
-                weather = KaohsiungWeather(temperature: temp, weatherCode: code, windSpeed: wind)
-            }
-        } catch {
-            print("天氣載入失敗：\(error)")
-        }
-        isFetching = false
-    }
-}
-
 // MARK: - MainView
 struct MainView: View {
 
@@ -215,8 +110,11 @@ struct MainView: View {
         todayCourses.filter { courseStatus(for: $0.period) == .upcoming }
     }
     
-    // 紀錄使用者是否廣告的地方按過叉叉
-     @State private var showInstagramBanner = !UserDefaults.standard.bool(forKey: "dismissedInstagramBanner")
+    // 紀錄使用者是否在廣告的地方按過叉叉
+    @State private var showInstagramBanner = !UserDefaults.standard.bool(forKey: "dismissedInstagramBanner")
+    
+    // 學分 state
+    @State private var graduation: GraduationStatus?
 
     var body: some View {
         NavigationStack {
@@ -278,8 +176,10 @@ struct MainView: View {
                                 .transition(.move(edge: .top).combined(with: .opacity))
                             }
 
-                            // MARK: 天氣卡片
-                            WeatherCard()
+                            // MARK: 畢業學分卡片
+                            if let graduation {
+                                CreditCard(status: graduation, cookies: cookies)
+                            }
 
                             // MARK: 正在進行的課
                             VStack(alignment: .leading, spacing: 12) {
@@ -360,18 +260,40 @@ struct MainView: View {
     func loadAll() async {
         async let profileHTML = ProfileService.shared.fetchProfile(cookies: cookies)
         async let coursesHTML = CourseService.shared.fetchCourses(cookies: cookies)
+        async let gradHTML    = GraduationService.shared.fetchStudyStatus(cookies: cookies)
 
         do {
             let (pHTML, cHTML) = try await (profileHTML, coursesHTML)
             profile = try ProfileParser.parse(html: pHTML)
             courses = try CourseParser.parse(html: cHTML)
+
+            // 用同一份課表更新 Widget（原本在 LoginView 登入後另外抓一次，已移到這裡）
+            updateWidget(with: courses)
         } catch ProfileError.sessionExpired {
             CookieStorage.clear()
             isLoggedIn = false
         } catch {
             print("載入失敗：\(error)")
         }
+
+        do {
+            graduation = try GraduationParser.parse(html: try await gradHTML)
+        } catch {
+            print("學分載入失敗：\(error)")
+        }
+
         isLoading = false
+    }
+
+    // MARK: - 更新課表 Widget
+    private func updateWidget(with courses: [Course]) {
+        let codable = courses.map {
+            CourseCodable(name: $0.name, teacher: $0.teacher,
+                          room: $0.room, period: $0.period, weekday: $0.weekday)
+        }
+        CourseStorage.shared.save(courses: codable)
+        WidgetCenter.shared.reloadAllTimelines()
+        print("已更新 Widget，共 \(codable.count) 堂課")
     }
 }
 
