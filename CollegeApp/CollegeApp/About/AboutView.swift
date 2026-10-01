@@ -169,6 +169,7 @@ struct AboutView: View {
             }
                 .navigationTitle("關於")
                 .navigationBarTitleDisplayMode(.inline)
+                .openLinksInSafariSheet()
         }
         
     }
