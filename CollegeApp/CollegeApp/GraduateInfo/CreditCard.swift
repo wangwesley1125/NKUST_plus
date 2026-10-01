@@ -142,8 +142,6 @@ struct CreditDetailView: View {
                     }
                 } header: {
                     Text("其他課規外修習課程（\(status.otherCourses.count)）")
-                } footer: {
-                    Text("審查前「其他課規外修習課程」預設不認審，待審查後才會確認是否認列為畢業學分。")
                 }
             }
 
