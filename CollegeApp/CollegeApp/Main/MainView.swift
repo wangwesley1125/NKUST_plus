@@ -225,6 +225,13 @@ struct MainView: View {
             .navigationTitle("首頁")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("NKUST Plus")
+                        .font(.title2)
+                        .bold()
+                        .foregroundStyle(.primary)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink {
                         SettingView(isLoggedIn: $isLoggedIn, cookies: cookies)
