@@ -529,7 +529,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CollegeApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "高科 Plus";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "顯示您在校園中的位置，方便找到目標建築";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "顯示您在校園中的位置，方便找到目標建築；記錄停車位置";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -567,7 +567,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CollegeApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "高科 Plus";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "顯示您在校園中的位置，方便找到目標建築";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "顯示您在校園中的位置，方便找到目標建築；記錄停車位置";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

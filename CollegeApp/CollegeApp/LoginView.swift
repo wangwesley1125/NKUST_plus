@@ -156,6 +156,7 @@ struct PrivacyConsentView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("使用者透過 App 內建 WebView 登入學校系統時，相關驗證資訊係由學校系統處理。本 App 僅透過系統提供之 HTTPCookieStorage 機制，暫時儲存登入狀態（Cookie），以維持使用期間之登入狀態。")
                             Text("若使用者選擇開啟「AutoFill 自動填入」功能，帳號密碼將以加密方式儲存於裝置本地 Keychain，不會傳輸至任何伺服器或第三方。")
+                            Text("若使用者使用「停車位置紀錄」功能，機車／汽車停車位置將僅儲存於裝置本地，不會傳輸至任何伺服器或第三方，使用者可隨時在 App 內清除。")
                         }
                     }
 
@@ -170,7 +171,7 @@ struct PrivacyConsentView: View {
                     }
 
                     PolicySection(number: "四", title: "資料保存與安全") {
-                        Text("登入狀態（Cookie）暫時儲存於裝置本地，不會傳輸至任何伺服器或第三方。Cookie 將依學校系統設定於期限內自動失效，屆時 App 將自動登出，使用者須重新登入。使用者亦可透過登出或清除 App 資料方式主動移除登入狀態。AutoFill 帳密儲存於裝置 Keychain，使用者可隨時在 App 內刪除。")
+                        Text("登入狀態（Cookie）暫時儲存於裝置本地，不會傳輸至任何伺服器或第三方。Cookie 將依學校系統設定於期限內自動失效，屆時 App 將自動登出，使用者須重新登入。使用者亦可透過登出或清除 App 資料方式主動移除登入狀態。AutoFill 帳密儲存於裝置 Keychain，使用者可隨時在 App 內刪除。停車位置可隨時於校園地圖中清除。")
                     }
 
                     PolicySection(number: "五", title: "使用者權利") {
