@@ -100,7 +100,9 @@ struct CredentialStorage {
 // MARK: - 同意狀態儲存
 
 struct ConsentStorage {
-    static let key = "hasAgreedPrivacyPolicy"
+    /// 條文有重大變更時把版本號 +1：舊版同意過的使用者會再看到一次同意畫面
+    /// v2：加入課程推薦、修課心得（資料會傳送至伺服器）與發表內容規範
+    static let key = "hasAgreedPrivacyPolicy_v2"
 
     static var hasAgreed: Bool {
         get { UserDefaults.standard.bool(forKey: key) }
@@ -148,38 +150,19 @@ struct PrivacyConsentView: View {
                     .background(Color.orange.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                    PolicySection(number: "一", title: "蒐集目的") {
-                        Text("本 App 提供校務系統連結、課表查詢及相關校園資訊服務。")
-                    }
-
-                    PolicySection(number: "二", title: "蒐集之個人資料類別") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("使用者透過 App 內建 WebView 登入學校系統時，相關驗證資訊係由學校系統處理。本 App 僅透過系統提供之 HTTPCookieStorage 機制，暫時儲存登入狀態（Cookie），以維持使用期間之登入狀態。")
-                            Text("若使用者選擇開啟「AutoFill 自動填入」功能，帳號密碼將以加密方式儲存於裝置本地 Keychain，不會傳輸至任何伺服器或第三方。")
-                            Text("若使用者使用「停車位置紀錄」功能，機車／汽車停車位置將僅儲存於裝置本地，不會傳輸至任何伺服器或第三方，使用者可隨時在 App 內清除。")
+                    // 條文內容與「設定 → 隱私政策」共用同一份（PrivacyView.sections）
+                    ForEach(PrivacyView.sections, id: \.number) { section in
+                        PolicySection(number: section.number, title: section.title) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(section.paragraphs, id: \.self) { paragraph in
+                                    Text(paragraph)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                ForEach(section.bullets, id: \.self) { bullet in
+                                    BulletRow(text: bullet)
+                                }
+                            }
                         }
-                    }
-
-                    PolicySection(number: "三", title: "個人資料利用方式") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Cookie 及帳密（如啟用 AutoFill）僅用於：")
-                            BulletRow(text: "維持登入狀態")
-                            BulletRow(text: "提供課表與校務資訊查詢功能")
-                            BulletRow(text: "AutoFill 自動填入登入表單（需使用者明確同意）")
-                            Text("本 App 不會讀取、分析或另行利用帳號相關敏感資訊，亦不會傳送至第三方。")
-                        }
-                    }
-
-                    PolicySection(number: "四", title: "資料保存與安全") {
-                        Text("登入狀態（Cookie）暫時儲存於裝置本地，不會傳輸至任何伺服器或第三方。Cookie 將依學校系統設定於期限內自動失效，屆時 App 將自動登出，使用者須重新登入。使用者亦可透過登出或清除 App 資料方式主動移除登入狀態。AutoFill 帳密儲存於裝置 Keychain，使用者可隨時在 App 內刪除。停車位置可隨時於校園地圖中清除。")
-                    }
-
-                    PolicySection(number: "五", title: "使用者權利") {
-                        Text("使用者可隨時停止使用本 App，或清除資料以終止相關處理行為。")
-                    }
-
-                    PolicySection(number: "六", title: "資料提供") {
-                        Text("若使用者不進行登入，將無法使用部分需驗證之功能（如課表查詢）。")
                     }
                 }
                 .padding(20)

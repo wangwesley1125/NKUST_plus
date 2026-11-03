@@ -169,6 +169,11 @@ struct TranscriptHistoryView: View {
     // 篩選狀態
     @State private var filterType: String = "全部"   // 全部 / 必修 / 選修
     @State private var sortByScore = false
+
+    // 按「推薦」→ 評分卡片
+    @State private var ratingTarget: RatableCourse?
+    // 課名（正規化）→ 老師：從目前課表對應，對得到就自動填進評分卡片
+    @State private var teacherLookup: [String: String] = [:]
  
     private var filteredCourses: [CourseRecord] {
         guard let data = transcriptData else { return [] }
@@ -197,7 +202,11 @@ struct TranscriptHistoryView: View {
         .navigationTitle("歷年成績")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { semesterPicker }
-        .task { await fetchSemestersAndToken() }
+        .task {
+            async let transcript: Void = fetchSemestersAndToken()
+            async let teachers: Void = fetchTeacherLookup()
+            _ = await (transcript, teachers)
+        }
     }
  
     // MARK: - 學期選擇工具列
@@ -259,6 +268,7 @@ struct TranscriptHistoryView: View {
                     Text("修別").frame(width: 40)
                     Text("學分").frame(width: 40)
                     Text("成績").frame(width: 44)
+                    Text("").frame(width: 50)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -266,6 +276,11 @@ struct TranscriptHistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        // 歷年成績單沒有老師資料：課表對得到就自動帶入，對不到讓使用者自己填
+        .sheet(item: $ratingTarget) { course in
+            CourseRatingSheet(course: course,
+                              teacher: teacherLookup[normalizeCourseText(course.name)] ?? "")
+        }
     }
  
     // MARK: - 成績摘要卡
@@ -365,6 +380,13 @@ struct TranscriptHistoryView: View {
                 .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(course.score.scoreColor)
                 .frame(width: 44)
+
+            // 推薦（推薦過就變「已推薦」）
+            if let ratable = RatableCourse(course, semester: selectedYM) {
+                RecommendButton(courseKey: ratable.courseKey) {
+                    ratingTarget = ratable
+                }
+            }
         }
         .padding(.vertical, 2)
     }
@@ -396,6 +418,19 @@ struct TranscriptHistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
  
+    // MARK: - 課表老師對應（給課程推薦自動帶入老師用）
+
+    private func fetchTeacherLookup() async {
+        guard let html = try? await CourseService.shared.fetchCourses(cookies: cookies),
+              let courses = try? CourseParser.parse(html: html) else { return }
+        var lookup: [String: String] = [:]
+        for course in courses {
+            let key = normalizeCourseText(course.name)
+            if lookup[key] == nil { lookup[key] = course.teacher }
+        }
+        await MainActor.run { teacherLookup = lookup }
+    }
+
     // MARK: - 網路請求
     func fetchSemestersAndToken() async {
         await MainActor.run {

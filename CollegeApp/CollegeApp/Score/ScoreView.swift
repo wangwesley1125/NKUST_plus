@@ -167,6 +167,9 @@ struct ScoreView: View {
     // @State private var studentInfo: TranscriptData?
     @State private var studentInfo: StudentProfile?
     @State private var isLoadingStudentInfo = true
+
+    // 課程推薦：課名（正規化）→ 老師，從課表對應（成績頁沒有老師欄位）
+    @State private var teacherLookup: [String: String] = [:]
  
     private var isAnyLoading: Bool {
         isMidtermLoading || isSemesterLoading
@@ -194,6 +197,7 @@ struct ScoreView: View {
                         scoreLabels: ["期中成績"],
                         scoreColumnTitle: "期中",
                         emptyText: "目前無期中成績",
+                        teacherLookup: teacherLookup,
                         isLoading: $isMidtermLoading
                     )
                     .id("midterm")
@@ -204,6 +208,7 @@ struct ScoreView: View {
                         scoreLabels: ["學期成績", "成績", "當學期成績", "期末成績"],
                         scoreColumnTitle: "學期",
                         emptyText: "目前無當學期成績",
+                        teacherLookup: teacherLookup,
                         isLoading: $isSemesterLoading
                     )
                     .id("semester")
@@ -212,7 +217,11 @@ struct ScoreView: View {
             .navigationTitle("我的成績")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { historyLink }
-            .task { await fetchStudentInfo() }
+            .task {
+                async let info: Void = fetchStudentInfo()
+                async let teachers: Void = fetchTeacherLookup()
+                _ = await (info, teachers)
+            }
         }
     }
  
@@ -316,6 +325,12 @@ struct ScoreView: View {
                 // 至少有姓名才算解析成功，避免 cookie 過期拿到登入頁時顯示空卡
                 studentInfo = profile.name.isEmpty ? nil : profile
                 isLoadingStudentInfo = false
+                // 課程推薦需要學號（伺服器只存雜湊，不存原文）
+                if !profile.name.isEmpty {
+                    // 先設科系再設學號：設學號會觸發補傳，補傳時要帶到科系
+                    CourseRatingStore.shared.department = profile.department
+                    CourseRatingStore.shared.studentId = profile.studentId
+                }
             }
         } catch {
             print("成績頁載入學生資料失敗：\(error)")
@@ -324,6 +339,25 @@ struct ScoreView: View {
     }
 }
  
+// MARK: - 課表老師對應（給課程推薦用）
+
+extension ScoreView {
+    fileprivate func fetchTeacherLookup() async {
+        do {
+            let html = try await CourseService.shared.fetchCourses(cookies: cookies)
+            let courses = try CourseParser.parse(html: html)
+            var lookup: [String: String] = [:]
+            for course in courses {
+                let key = normalizeCourseText(course.name)
+                if lookup[key] == nil { lookup[key] = course.teacher }
+            }
+            await MainActor.run { teacherLookup = lookup }
+        } catch {
+            print("成績頁載入課表（老師對應）失敗：\(error)")
+        }
+    }
+}
+
 // MARK: - 共用列表（期中 / 當學期都用這個）
  
 struct ScoreListView: View {
@@ -332,6 +366,7 @@ struct ScoreListView: View {
     let scoreLabels: [String]     // 成績欄候選 data-label
     let scoreColumnTitle: String  // 表頭顯示文字，例如「期中」「學期」
     let emptyText: String         // 無資料時顯示的文字
+    let teacherLookup: [String: String]   // 課名（正規化）→ 老師
  
     @Binding var isLoading: Bool
     @State private var records: [ScoreRecord] = []
@@ -340,6 +375,9 @@ struct ScoreListView: View {
     // 篩選
     @State private var filterType: String = "全部"
     @State private var sortByScore = false
+
+    // 按「推薦」→ 評分卡片
+    @State private var ratingTarget: RatableCourse?
  
     private var filteredRecords: [ScoreRecord] {
         var list = records
@@ -400,7 +438,8 @@ struct ScoreListView: View {
                     Text("課程名稱").frame(maxWidth: .infinity, alignment: .leading)
                     Text("修別").frame(width: 40)
                     Text("學分").frame(width: 40)
-                    Text(scoreColumnTitle).frame(width: 50)
+                    Text(scoreColumnTitle).frame(width: 44)
+                    Text("").frame(width: 50)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -408,6 +447,9 @@ struct ScoreListView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .sheet(item: $ratingTarget) { course in
+            CourseRatingSheet(course: course, teacher: teacher(for: course.name))
+        }
     }
  
     // MARK: - 摘要卡（不含平均成績）
@@ -504,11 +546,24 @@ struct ScoreListView: View {
             Text(record.score.isEmpty ? "—" : record.score)
                 .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(record.score.scoreColor)
-                .frame(width: 50)
+                .frame(width: 44)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+
+            let course = RatableCourse(record)
+            RecommendButton(courseKey: course.courseKey) {
+                ratingTarget = course
+            }
         }
         .padding(.vertical, 4)
     }
- 
+
+    // MARK: - 課程推薦
+
+    private func teacher(for courseName: String) -> String {
+        teacherLookup[normalizeCourseText(courseName)] ?? ""
+    }
+
     // MARK: - 輔助 Views
  
     private var loadingView: some View {

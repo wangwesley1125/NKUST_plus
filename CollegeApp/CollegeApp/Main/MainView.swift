@@ -116,6 +116,13 @@ struct MainView: View {
     // 學分 state
     @State private var graduation: GraduationStatus?
 
+    // 課程推薦數（key = courseStatKey(name:teacher:)）
+    @State private var courseStats: [String: CourseStat] = [:]
+
+    private func stat(for course: Course) -> CourseStat? {
+        courseStats[courseStatKey(name: course.name, teacher: course.teacher)]
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -189,7 +196,7 @@ struct MainView: View {
                                     color: .teal
                                 )
                                 if let course = ongoingCourse {
-                                    OngoingCourseCard(course: course)
+                                    OngoingCourseCard(course: course, stat: stat(for: course))
                                 } else {
                                     EmptyStateCard(
                                         icon: "cup.and.saucer.fill",
@@ -212,7 +219,7 @@ struct MainView: View {
                                 } else {
                                     VStack(spacing: 10) {
                                         ForEach(upcomingCourses) { course in
-                                            UpcomingCourseRow(course: course)
+                                            UpcomingCourseRow(course: course, stat: stat(for: course))
                                         }
                                     }
                                 }
@@ -225,6 +232,18 @@ struct MainView: View {
             .navigationTitle("首頁")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                // 左上角：課程推薦
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink {
+                        CourseRecommendView()
+                    } label: {
+                        Image(systemName: "hand.thumbsup.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.teal)
+                    }
+                    .accessibilityLabel("課程推薦")
+                }
+
                 ToolbarItem(placement: .principal) {
                     Text("NKUST Plus")
                         .font(.title2)
@@ -274,6 +293,12 @@ struct MainView: View {
             profile = try ProfileParser.parse(html: pHTML)
             courses = try CourseParser.parse(html: cHTML)
 
+            // 課程推薦要用的學號（伺服器只存雜湊）與科系；先設科系再設學號（設學號會觸發補傳）
+            if !profile.name.isEmpty {
+                CourseRatingStore.shared.department = profile.department
+                CourseRatingStore.shared.studentId = profile.studentId
+            }
+
             // 用同一份課表更新 Widget（原本在 LoginView 登入後另外抓一次，已移到這裡）
             updateWidget(with: courses)
         } catch ProfileError.sessionExpired {
@@ -290,6 +315,19 @@ struct MainView: View {
         }
 
         isLoading = false
+
+        // 畫面先顯示，推薦數之後再補上（不擋住首頁載入）
+        await loadCourseStats()
+    }
+
+    // MARK: - 課程推薦數
+    // 一次批次查詢整份課表的課（通常十門左右），不需要逐門請求
+    private func loadCourseStats() async {
+        let pairs = courses.map { (name: $0.name, teacher: $0.teacher) }
+        let stats = await CourseRatingStore.shared.fetchStats(for: pairs)
+        withAnimation(.easeOut(duration: 0.25)) {
+            courseStats = stats
+        }
     }
 
     // MARK: - 更新課表 Widget
@@ -324,6 +362,7 @@ private struct SectionHeader: View {
 // MARK: - 正在進行課程卡（大卡片）
 private struct OngoingCourseCard: View {
     let course: Course
+    let stat: CourseStat?
 
     private var progress: Double { courseProgress(for: course.period) ?? 0 }
     private var remaining: Int   { remainingMinutes(for: course.period) ?? 0 }
@@ -345,6 +384,8 @@ private struct OngoingCourseCard: View {
                         .font(.title2).bold()
                         .foregroundColor(.primary)
                         .padding(.top, 6)
+
+                    RatingBadge(stat: stat)
                 }
                 Spacer()
                 ZStack {
@@ -428,6 +469,7 @@ private struct OngoingCourseCard: View {
 // MARK: - 即將上課列（小列）
 private struct UpcomingCourseRow: View {
     let course: Course
+    let stat: CourseStat?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -449,6 +491,7 @@ private struct UpcomingCourseRow: View {
                 Text(course.name)
                     .font(.subheadline).bold()
                     .foregroundColor(.primary)
+                RatingBadge(stat: stat)
                 HStack(spacing: 8) {
                     Label(course.teacher, systemImage: "person.fill")
                         .font(.caption).foregroundColor(.secondary)
@@ -464,6 +507,35 @@ private struct UpcomingCourseRow: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - 推薦徽章
+// 「● 85% 推薦・20 人」（推薦 = 選「超級推薦」或「還可以」；圓點顏色依推薦率）
+// 還沒有人評：「尚無評分」；還沒載入：不顯示
+private struct RatingBadge: View {
+    let stat: CourseStat?
+
+    var body: some View {
+        if let stat {
+            if let rate = stat.recommendRate {
+                let tint = recommendRateColor(rate)
+                HStack(spacing: 5) {
+                    RatingDot(color: tint, size: 7)
+                    Text("\(Int((rate * 100).rounded()))% 推薦・\(stat.total) 人")
+                }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(tint.opacity(0.12))
+                    .clipShape(Capsule())
+            } else {
+                Label("尚無評分", systemImage: "hand.thumbsup")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

@@ -1,0 +1,30 @@
+# ===== macOS =====
+.DS_Store
+
+# ===== Xcode：個人設定與編譯產物 =====
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ===== 簽章、上架憑證、金鑰（絕對不能公開）=====
+*.p12
+*.p8
+*.cer
+*.mobileprovision
+*.provisionprofile
+AuthKey_*.p8
+.env
+.env.*
+
+# ===== Cloudflare 後端 =====
+ratings-backend/node_modules/
+ratings-backend/.wrangler/
+ratings-backend/.dev.vars
+node_modules/
+.wrangler/
+.dev.vars

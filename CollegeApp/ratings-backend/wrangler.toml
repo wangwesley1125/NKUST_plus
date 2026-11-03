@@ -1,0 +1,19 @@
+name = "nkust-plus-ratings"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nkust-plus-ratings"
+# 執行 `npx wrangler d1 create nkust-plus-ratings` 後，把它給的 database_id 貼在這裡
+database_id = "d0c8d25b-3bda-44bf-8714-677e6c4e5a23"
+
+[triggers]
+# 每天 UTC 19:00（台灣時間凌晨 3:00）彙總並刪除兩年前的評分
+crons = ["0 19 * * *"]
+
+workers_dev = true
+preview_urls = false
+
+[vars]
+MIN_VOTES = "1"
