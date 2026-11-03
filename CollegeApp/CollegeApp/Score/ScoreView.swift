@@ -164,7 +164,8 @@ struct ScoreView: View {
     @State private var isSemesterLoading = false
  
     // 學生基本資料（取最新一學期的成績單來取得姓名等資訊）
-    @State private var studentInfo: TranscriptData?
+    // @State private var studentInfo: TranscriptData?
+    @State private var studentInfo: StudentProfile?
     @State private var isLoadingStudentInfo = true
  
     private var isAnyLoading: Bool {
@@ -259,13 +260,13 @@ struct ScoreView: View {
         .padding(.top, 8)
     }
  
-    private func studentInfoCard(_ data: TranscriptData) -> some View {
+    private func studentInfoCard(_ data: StudentProfile) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(data.studentName)
+                    Text(data.name)
                         .font(.title2.weight(.bold))
-                    Text(data.studentID)
+                    Text(data.studentId)
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -274,13 +275,13 @@ struct ScoreView: View {
                     .font(.system(size: 32))
                     .foregroundStyle(Color.teal)
             }
- 
+
             Divider()
- 
+
             HStack(spacing: 0) {
                 infoChip(icon: "building.2", text: data.department)
                 Spacer()
-                infoChip(icon: "person.3", text: data.classInfo)
+                infoChip(icon: "person.3", text: data.className)
             }
         }
         .padding(16)
@@ -302,84 +303,22 @@ struct ScoreView: View {
         }
     }
  
-    // MARK: - 取得學生基本資料
-    // 抓「學期清單 + Token」後，只取最新一學期的成績單 PDF 來解析姓名 / 學號 / 科系 / 班級。
- 
+    // MARK: - 取得學生基本資料（學籍頁，與個人資料頁共用 ProfileService）
+
     private func fetchStudentInfo() async {
         await MainActor.run { isLoadingStudentInfo = true }
- 
-        guard let url = URL(string: "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript") else {
-            await MainActor.run { isLoadingStudentInfo = false }
-            return
-        }
- 
-        var request = URLRequest(url: url)
-        HTTPCookie.requestHeaderFields(with: cookies).forEach {
-            request.setValue($1, forHTTPHeaderField: $0)
-        }
- 
+
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let html = String(data: data, encoding: .utf8) ?? ""
- 
-            // 解析學期（從 JS 字串中取出），取最新一筆
-            let jsPattern = #""(\d{3}-\d)""#
-            var yms: [String] = []
-            if let regex = try? NSRegularExpression(pattern: jsPattern) {
-                let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
-                let ymSet = matches.compactMap { match -> String? in
-                    guard let r = Range(match.range(at: 1), in: html) else { return nil }
-                    return String(html[r])
-                }
-                yms = Array(Set(ymSet)).sorted().reversed()
-            }
- 
-            guard let latestYM = yms.first else {
-                await MainActor.run { isLoadingStudentInfo = false }
-                return
-            }
- 
-            // 解析 Token
-            var token = ""
-            let inputPattern = #"name="__RequestVerificationToken"[^>]*value="([^"]+)""#
-            if let regex = try? NSRegularExpression(pattern: inputPattern),
-               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-               let r = Range(match.range(at: 1), in: html) {
-                token = String(html[r])
-            }
- 
-            let ymForAPI = latestYM.replacingOccurrences(of: "-", with: "")
-            var components = URLComponents(string: "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript/PrintTranscript")!
-            components.queryItems = [
-                URLQueryItem(name: "YM", value: ymForAPI),
-                URLQueryItem(name: "ShowRank", value: "true"),
-                URLQueryItem(name: "__RequestVerificationToken", value: token),
-                URLQueryItem(name: "ShowRank", value: "false")
-            ]
- 
-            guard let pdfURL = components.url else {
-                await MainActor.run { isLoadingStudentInfo = false }
-                return
-            }
- 
-            var pdfRequest = URLRequest(url: pdfURL)
-            HTTPCookie.requestHeaderFields(with: cookies).forEach {
-                pdfRequest.setValue($1, forHTTPHeaderField: $0)
-            }
-            pdfRequest.setValue(
-                "https://stdsys.nkust.edu.tw/student/Score/SingleSemesterTranscript",
-                forHTTPHeaderField: "Referer"
-            )
- 
-            let (pdfData, _) = try await URLSession.shared.data(for: pdfRequest)
- 
+            let html = try await ProfileService.shared.fetchProfile(cookies: cookies)
+            let profile = try ProfileParser.parse(html: html)
+
             await MainActor.run {
-                if let doc = PDFDocument(data: pdfData) {
-                    studentInfo = TranscriptParser.parse(from: doc)
-                }
+                // 至少有姓名才算解析成功，避免 cookie 過期拿到登入頁時顯示空卡
+                studentInfo = profile.name.isEmpty ? nil : profile
                 isLoadingStudentInfo = false
             }
         } catch {
+            print("成績頁載入學生資料失敗：\(error)")
             await MainActor.run { isLoadingStudentInfo = false }
         }
     }
