@@ -172,8 +172,9 @@ struct TranscriptHistoryView: View {
 
     // 按「推薦」→ 評分卡片
     @State private var ratingTarget: RatableCourse?
-    // 課名（正規化）→ 老師：從目前課表對應，對得到就自動填進評分卡片
-    @State private var teacherLookup: [String: String] = [:]
+    // 學期（例如 113-1）→（課名（正規化）→ 老師）：從「那個學期」的課表對應，
+    // 對得到就自動填進評分卡片。每個學期只抓一次。
+    @State private var teacherLookups: [String: [String: String]] = [:]
  
     private var filteredCourses: [CourseRecord] {
         guard let data = transcriptData else { return [] }
@@ -203,9 +204,7 @@ struct TranscriptHistoryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { semesterPicker }
         .task {
-            async let transcript: Void = fetchSemestersAndToken()
-            async let teachers: Void = fetchTeacherLookup()
-            _ = await (transcript, teachers)
+            await fetchSemestersAndToken()
         }
     }
  
@@ -279,7 +278,7 @@ struct TranscriptHistoryView: View {
         // 歷年成績單沒有老師資料：課表對得到就自動帶入，對不到讓使用者自己填
         .sheet(item: $ratingTarget) { course in
             CourseRatingSheet(course: course,
-                              teacher: teacherLookup[normalizeCourseText(course.name)] ?? "")
+                              teacher: teacher(for: course))
         }
     }
  
@@ -420,15 +419,22 @@ struct TranscriptHistoryView: View {
  
     // MARK: - 課表老師對應（給課程推薦自動帶入老師用）
 
-    private func fetchTeacherLookup() async {
-        guard let html = try? await CourseService.shared.fetchCourses(cookies: cookies),
+    /// 抓「該學期」的課表來對老師（例如 113-1 的課就查 113-1 的課表）。
+    /// 已經抓過的學期不重抓；抓不到（學校查不到舊課表等）就留空，讓使用者自己填。
+    private func fetchTeacherLookup(for semester: String) async {
+        guard !semester.isEmpty, teacherLookups[semester] == nil else { return }
+        guard let html = try? await CourseService.shared.fetchCourses(cookies: cookies, schoolYearSms: semester),
               let courses = try? CourseParser.parse(html: html) else { return }
         var lookup: [String: String] = [:]
         for course in courses {
             let key = normalizeCourseText(course.name)
             if lookup[key] == nil { lookup[key] = course.teacher }
         }
-        await MainActor.run { teacherLookup = lookup }
+        await MainActor.run { teacherLookups[semester] = lookup }
+    }
+
+    private func teacher(for course: RatableCourse) -> String {
+        teacherLookups["\(course.year)-\(course.term)"]?[normalizeCourseText(course.name)] ?? ""
     }
 
     // MARK: - 網路請求
@@ -492,6 +498,10 @@ struct TranscriptHistoryView: View {
  
     func fetchPDF() async {
         guard !selectedYM.isEmpty else { return }
+
+        // 同時抓這學期的課表（給推薦自動帶入老師用），不擋住成績顯示
+        let semester = selectedYM
+        Task { await fetchTeacherLookup(for: semester) }
  
         await MainActor.run {
             isLoadingData = true
