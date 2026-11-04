@@ -100,6 +100,8 @@ struct CourseRatingSheet: View {
     @State private var errorText: String?
     /// 統計顯示：false = 全校、true = 本系
     @State private var showDepartment = false
+    /// 送出前的確認視窗（送出後無法修改，讓使用者再看一眼）
+    @State private var confirmLevel: RatingLevel?
     @FocusState private var isCommentFocused: Bool
 
     private var store: CourseRatingStore { .shared }
@@ -134,6 +136,15 @@ struct CourseRatingSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) { actionBar }
+            .alert("確定要送出嗎？",
+                   isPresented: Binding(get: { confirmLevel != nil },
+                                        set: { if !$0 { confirmLevel = nil } }),
+                   presenting: confirmLevel) { level in
+                Button("送出") { Task { await submit(level) } }
+                Button("再看看", role: .cancel) {}
+            } message: { level in
+                Text(confirmMessage(level))
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -435,14 +446,16 @@ struct CourseRatingSheet: View {
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(.center)
             } else {
-                Text("每門課只能推薦一次，送出後無法修改")
+                Text("每門課只能推薦一次，送出後無法修改，如需更正請聯絡開發者")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
             Button {
                 guard let selected else { return }
-                Task { await submit(selected) }
+                isCommentFocused = false
+                isTeacherFocused = false
+                confirmLevel = selected
             } label: {
                 Group {
                     if isSubmitting {
@@ -462,6 +475,20 @@ struct CourseRatingSheet: View {
         .padding(.top, 10)
         .padding(.bottom, 8)
         .background(.bar)
+    }
+
+    /// 確認視窗內容：列出要送出的內容；沒填老師時多提醒一句
+    private func confirmMessage(_ level: RatingLevel) -> String {
+        let teacherText = trimmedTeacher.isEmpty ? "老師未提供" : trimmedTeacher
+        var lines = ["\(course.name)・\(teacherText)・\(level.title)"]
+        if !trimmedComment.isEmpty {
+            lines.append("心得：\(trimmedComment.count > 30 ? String(trimmedComment.prefix(30)) + "…" : trimmedComment)")
+        }
+        if trimmedTeacher.isEmpty {
+            lines.append("\n你還沒填授課教師，其他同學會看到「老師未提供」。")
+        }
+        lines.append("\n送出後無法修改，如需更正請透過「關於」頁面聯絡開發者。")
+        return lines.joined(separator: "\n")
     }
 
     private func submit(_ level: RatingLevel) async {
