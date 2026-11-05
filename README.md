@@ -128,6 +128,9 @@
 - 停車位置只儲存在本機，可隨時在校園地圖中清除
 - 課程推薦：送出時上傳學號（伺服器端以 HMAC 單向雜湊，資料庫不保存原文）、科系、修別、學年學期、課名、授課教師、推薦程度與心得；以 HTTPS 傳送，存放於 Cloudflare，兩年後自動刪除，僅保留不具識別性的統計
 
+## 目前 APP 架構圖
+[![Architecture diagram of wangwesley1125/nkust_plus](https://gitdiagram.com/wangwesley1125/nkust_plus/diagram.png)](https://gitdiagram.com/wangwesley1125/nkust_plus?utm_source=readme&utm_medium=picture)
+
 ## 系統需求
 - iOS 17 以上
 - iPhone, iPad 裝置
